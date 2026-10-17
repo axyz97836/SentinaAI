@@ -1,0 +1,32 @@
+name: sentinelai-db-tests
+services:
+  database-test:
+    build:
+      context: ..
+      dockerfile: infra/postgres/Dockerfile
+    env_file: ../.local/database-tests.env
+    # RAM-backed disposable data; no main development volume is referenced.
+    tmpfs: [/var/lib/postgresql/data]
+    networks: [test]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  database-checks:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: test
+    env_file: ../.local/database-tests.env
+    environment:
+      DB_HOST: database-test
+      APP_ENV: test
+      DATABASE_TESTS: "1"
+    networks: [test]
+    command: [pytest, -p, no:cacheprovider, tests/database]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+networks:
+  test:
+    internal: true

@@ -16,6 +16,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: make env
       - run: make up
+      - run: make database-check
+      - run: make migrate seed
       - run: make backend-check frontend-check infra-check outage-check
       - run: npm ci --ignore-scripts
         working-directory: frontend

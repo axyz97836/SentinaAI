@@ -5,6 +5,8 @@ COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir --require-hashes -r requirements.txt \
     && useradd --create-home --uid 10001 sentinel
 COPY backend/app ./app
+COPY backend/alembic.ini ./alembic.ini
+COPY backend/migrations ./migrations
 USER sentinel
 EXPOSE 8000
 CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--no-server-header"]
