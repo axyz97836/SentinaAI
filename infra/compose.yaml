@@ -1,0 +1,166 @@
+name: ${COMPOSE_PROJECT_NAME:-sentinelai}
+
+x-backend-env: &backend-env
+  APP_ENV: local
+  DB_HOST: postgres
+  POSTGRES_DB: ${POSTGRES_DB:-sentinelai}
+  APP_DB_USER: ${APP_DB_USER:-sentinel_app}
+  APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Run node infra/scripts/setup-env.mjs}
+  REDIS_HOST: redis
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?Run node infra/scripts/setup-env.mjs}
+  S3_ENDPOINT: http://object-storage:8333
+  S3_BUCKET: ${S3_BUCKET:-sentinel-local}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:?Run node infra/scripts/setup-env.mjs}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:?Run node infra/scripts/setup-env.mjs}
+
+services:
+  postgres:
+    build:
+      context: ..
+      dockerfile: infra/postgres/Dockerfile
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sentinelai}
+      POSTGRES_USER: ${POSTGRES_USER:-sentinel_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Run node infra/scripts/setup-env.mjs}
+      APP_DB_USER: ${APP_DB_USER:-sentinel_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Run node infra/scripts/setup-env.mjs}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [services]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Run node infra/scripts/setup-env.mjs}
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        umask 077
+        printf 'requirepass %s\nappendonly yes\nmaxmemory 256mb\nmaxmemory-policy noeviction\n' "$$REDIS_PASSWORD" > /tmp/redis.conf
+        exec redis-server /tmp/redis.conf
+    volumes:
+      - redis-data:/data
+    networks: [services]
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  object-storage:
+    image: chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    command:
+      - mini
+      - -dir=/data
+      - -s3.config=/etc/seaweedfs/s3.json
+      - -master.telemetry=false
+      - -admin.ui=false
+      - -webdav=false
+      - -s3.port.iceberg=0
+      - -s3.port.lance=0
+      - -s3.autoCreateBucket=false
+      - -s3.allowDeleteBucketNotEmpty=false
+      - -volume.max=5
+    environment:
+      S3_BUCKET: ${S3_BUCKET:-sentinel-local}
+    volumes:
+      - object-data:/data
+      - ../.local/seaweedfs.json:/etc/seaweedfs/s3.json:ro
+    networks: [services]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:9333/cluster/status]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: runtime
+    environment: *backend-env
+    ports: ["127.0.0.1:${API_PORT:-8000}:8000"]
+    networks: [web, services]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      object-storage: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready', timeout=9)"]
+      interval: 10s
+      timeout: 10s
+      start_period: 20s
+      retries: 20
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: runtime
+    environment: *backend-env
+    command: [celery, -A, app.worker:celery_app, worker, --loglevel=WARNING, --concurrency=1, --hostname=sentinel@worker, --without-gossip, --without-mingle]
+    networks: [services]
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, celery, -A, app.worker:celery_app, inspect, ping, --destination=sentinel@worker, --timeout=3]
+      interval: 20s
+      timeout: 8s
+      start_period: 15s
+      retries: 10
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+    environment:
+      API_INTERNAL_URL: http://api:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports: ["127.0.0.1:${FRONTEND_PORT:-3000}:3000"]
+    networks: [web]
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 10s
+      start_period: 40s
+      retries: 15
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: unless-stopped
+
+  backend-checks:
+    profiles: [checks]
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: test
+    environment: *backend-env
+    networks: [services]
+
+networks:
+  web:
+  services:
+    internal: true
+
+volumes:
+  postgres-data:
+  redis-data:
+  object-data:

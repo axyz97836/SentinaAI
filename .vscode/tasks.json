@@ -1,0 +1,67 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "SentinelAI: start infrastructure",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"--env-file",
+				".env",
+				"-f",
+				"infra/compose.yaml",
+				"up",
+				"-d",
+				"--wait",
+				"postgres",
+				"redis",
+				"object-storage"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "SentinelAI: frontend checks",
+			"type": "shell",
+			"command": "make",
+			"args": [
+				"frontend-check"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "SentinelAI: start API and worker",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"--env-file",
+				".env",
+				"-f",
+				"infra/compose.yaml",
+				"up",
+				"-d",
+				"--build",
+				"--wait",
+				"--wait-timeout",
+				"240",
+				"api",
+				"worker"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "SentinelAI: start local stack",
+			"type": "shell",
+			"command": "make",
+			"args": [
+				"up"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}
