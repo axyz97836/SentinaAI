@@ -1,12 +1,13 @@
 # SentinelAI Phase 2 verification
 
-**Decision: PASS for Phase 2 only. Phase 3 has not started.**
+**Local Phase 2 verification: PASS. GitHub CI: startup failure, unresolved. Phase 3 has not started.**
 
 - Final verification date: **18 October 2026 IST** (17 October UTC).
 - Environment: existing local macOS/Apple Silicon workspace and Docker Desktop Linux containers.
 - Tester: Codex, using actual terminal commands, PostgreSQL inspection, pytest and Playwright.
 - Implementation commit: `5c573a6886ac26bb0d7de1375181c5811b58c400`.
-- Branch: `feat/phase-02-schema`, based on the completed Phase 1 commits.
+- Current publication branch: `feat/phase-02-database`. The original verified branch
+  `feat/phase-02-schema` and all existing commits are preserved.
 - Migration: **`0001_initial_schema`**, initial revision, no parent.
 - Authority: [BACKEND_SCHEMA.md](../docs/BACKEND_SCHEMA.md), [implementation plan v1.1](../docs/IMPLEMENTATION_PLAN.md), all other approved baseline/security documents, and the owner's Phase 2 instructions.
 
@@ -273,9 +274,11 @@ Docker and PostgreSQL 17.11 were retained. Runtime/development locks include exa
 versions and hashes. pip-audit's generic `--no-deps` warning was emitted, but both full
 locked dependency inventories were scanned successfully.
 
-Hosted CI, another operating system, a general-purpose secret scanner, container OS
-vulnerability scanning, formal security certification, production TLS/backup/restore,
-and future auth/tenant workflows were not executed or claimed as passed. The secret
+Hosted CI had not run at the original local Phase 2 sign-off. Publication subsequently
+triggered the startup failures documented below. A completed test suite on another
+operating system, a general-purpose secret scanner, container OS vulnerability scanning,
+formal security certification, production TLS/backup/restore and future auth/tenant
+workflows are not claimed as passed. The secret
 scan compared actual current local credential values. Audit results reflect known
 advisories at execution time. Isolated test containers and network were removed;
 reusable build images remain. All six main local services were healthy at final inspection.
@@ -315,9 +318,60 @@ SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname='public' 
 
 No manual database repair or credential rotation is needed. Keep the protected local
 credential files; do not paste their contents into chat or source control. Git contains
-the local implementation commit above and a following report-only commit. Nothing was
-pushed, merged to another branch or deployed. Review this result and explicitly approve
+the implementation and verification commits above. They were subsequently pushed under
+the owner's explicit GitHub authorization, as recorded below. No feature branch was
+merged into main and nothing was deployed. Review this result and explicitly approve
 Phase 3 before authentication work begins.
+
+## GitHub synchronization update — 18 October 2026 IST
+
+The owner authorized regular verified commits/pushes and the persistent workflow in
+[AGENTS.md](../AGENTS.md). That file defines the approximately 200–300 meaningful-line
+checkpoint review, relevant checks before commits, conventional messages, feature-branch
+pushes, remote verification, secret hygiene, the eleven authoritative documents and the
+explicit approval gate before another phase. It was completed in commit
+`d6018e7bc88a4a0be2aff36796c998c21f5a2c03` and required no reconstruction after interruption.
+
+The GitHub repository was empty and no local remote was configured. `origin` was added
+as exactly `https://github.com/axyz97836/SentinaAI`. The initial pushes were verified
+with `git ls-remote`, not inferred from local commits:
+
+| Remote branch | Verified initial published commit | Scope |
+|---|---|---|
+| [main](https://github.com/axyz97836/SentinaAI/tree/main) | [ccd5f97e793dc90a9b5f33a7365190cd74fc2a7e](https://github.com/axyz97836/SentinaAI/commit/ccd5f97e793dc90a9b5f33a7365190cd74fc2a7e) | Last verified Phase 1 baseline; contains no Phase 2 schema/migrations |
+| [feat/phase-02-database](https://github.com/axyz97836/SentinaAI/tree/feat/phase-02-database) | [d6018e7bc88a4a0be2aff36796c998c21f5a2c03](https://github.com/axyz97836/SentinaAI/commit/d6018e7bc88a4a0be2aff36796c998c21f5a2c03) | Preserved Phase 2 implementation/report plus persistent Git workflow |
+
+The original four commits were retained without rewriting. Before the first push, a
+targeted scan checked all four commits and 83 unique file blobs for the actual current
+local credentials, sensitive/generated paths, private-key markers and selected token/hash
+signatures. It found no matches. Subsequent documentation changes were checked separately.
+All credential files remain Git-ignored; all eleven approved document hashes still match.
+
+There were no Git push authentication or synchronization errors. Existing secure Git
+authentication worked. Anonymous access to Actions job logs returned 403; using that
+existing credential in memory for read-only API access succeeded. No token was printed,
+stored in the repository or requested in chat, and no GitHub security control was changed.
+
+### GitHub Actions results
+
+| Run | Commit | Observed result |
+|---|---|---|
+| [Initial main run](https://github.com/axyz97836/SentinaAI/actions/runs/39062845290) | `ccd5f97` | Failed at `Run make up`, exit 2 |
+| [Initial Phase 2 branch run](https://github.com/axyz97836/SentinaAI/actions/runs/39062904343) | `d6018e7` | Failed at `Run make up`, exit 2 |
+
+Both logs report `dependency failed to start: container sentinelai-object-storage-1 is
+unhealthy`. Hosted verification steps were skipped after startup failed; they are **not
+passes**. The captured job logs do not establish the underlying storage-service cause.
+CI needs a separate diagnostic/fix with storage-container logs before cleanup. The
+existing local results remain **153 database + 17 unit + 7 browser = 177 passing tests**;
+they were not rerun solely for this documentation/synchronization change.
+
+This report update is a subsequent documentation-only checkpoint. Its final pushed
+commit is recorded in the synchronization response and can be inspected using
+`git log -1 --format=%H -- verification/phase-2.md` and `git ls-remote origin`.
+Application functionality and CI behavior were not changed during synchronization.
+There were no force-pushes, history rewrites, automatic merges, credential rotations,
+database resets or Phase 3 changes. Successful publication does not imply successful CI.
 
 ## Sources and community context
 
