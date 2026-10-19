@@ -15,7 +15,13 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: make env
+      - name: Validate Compose and credential-file metadata
+        run: |
+          docker compose --env-file .env -f infra/compose.yaml config --quiet
+          stat -c 'S3 source permissions: %u:%g %a' .local/seaweedfs.json
       - run: make up
+      - run: make database-check
+      - run: make migrate seed
       - run: make backend-check frontend-check infra-check outage-check
       - run: npm ci --ignore-scripts
         working-directory: frontend
@@ -25,5 +31,8 @@ jobs:
         working-directory: frontend
       - run: npm audit --audit-level=high
         working-directory: frontend
+      - name: Capture redacted diagnostics before cleanup
+        if: failure()
+        run: node infra/scripts/diagnose-compose.mjs
       - if: always()
         run: make down

@@ -2,8 +2,9 @@
 
 Local foundation for a synthetic-data fraud and risk intelligence demonstration.
 Phase 1 contains a minimal Next.js page, FastAPI health endpoints, PostgreSQL,
-Redis, a Celery worker, and private S3-compatible development storage. No accounts,
-product tables, fraud scoring, ingestion or investigation workflows exist yet.
+Redis, a Celery worker, and private S3-compatible development storage. Phase 2 adds
+the approved eighteen-table schema, Alembic migrations and fictional demo accounts.
+Authentication endpoints, fraud scoring, ingestion and investigation workflows are not implemented.
 
 The approved [implementation plan](docs/IMPLEMENTATION_PLAN.md) remains authoritative.
 All eleven planning/security documents are preserved. This project is not deployed.
@@ -105,6 +106,78 @@ The CI workflow runs the same foundation checks. A workflow file is not evidence
 of a successful hosted CI run. Dated local results and limitations are recorded in
 [the Phase 1 report](verification/phase-1.md).
 
+## Phase 2 database and fictional demo seed
+
+The schema follows [BACKEND_SCHEMA.md](docs/BACKEND_SCHEMA.md). The initial revision
+is `0001_initial_schema`. There are eighteen domain tables plus Alembic's own
+`alembic_version` bookkeeping table. No business records or trained models are seeded.
+
+After starting the Phase 1 services, run from the repository root:
+
+```sh
+make database-check
+make migrate
+make seed
+```
+
+`make database-check` builds a separate `sentinelai-db-tests` Compose project. Its
+PostgreSQL data directory is RAM-backed, has no host ports, and references none of
+the main project's volumes. It tests upgrade/downgrade/upgrade, schema/model parity,
+constraints, privileges and seed behavior, then removes only those test resources.
+Do not run two copies of this named test project at the same time.
+
+`make migrate` provisions `sentinel_migrator` with its own protected local credentials
+in ignored `.local/migration.env`, then applies Alembic using an opt-in Compose overlay.
+It preserves existing credentials and the main database volume. The migration role
+is not a superuser, cannot create databases or roles, and receives schema creation
+rights only for this database. API/worker containers do not receive its password.
+The existing application identity retains no schema DDL privileges. Main-database
+downgrade is deliberately refused; rollback testing is restricted to the disposable DB.
+
+`make seed` first ensures the migration is current, then runs the seed as the existing
+application database identity. It creates one **SentinelAI Fictional Demo** organization,
+three fictional accounts and memberships, and default thresholds 40/70/85, alert 70:
+
+| Fictional account | Role |
+|---|---|
+| `admin@sentinel-demo.invalid` | ADMIN |
+| `risk-manager@sentinel-demo.invalid` | RISK_MANAGER |
+| `analyst@sentinel-demo.invalid` | ANALYST |
+
+Random passwords are saved only to ignored `.local/demo/credentials.json` with mode
+`0600`; its containing directory is `0700`. Inspect this file locally in your editor
+when needed; do not paste it into chat, logs or source control. PostgreSQL stores only
+Argon2id hashes (64 MiB, three iterations, parallelism four). Repeating the command
+preserves account IDs, hashes, memberships and credential-file bytes. If accounts exist
+but the file is lost, restore it; the command refuses silent credential replacement.
+The seed refuses any environment other than explicit `APP_ENV=local`.
+
+Default rule codes are documented, but complete approved initial parameter values
+are not. Therefore no rule definitions are seeded. No sessions, transactions, scores,
+alerts, cases, datasets, jobs or model versions are invented. Login remains Phase 3.
+
+To inspect as the restricted application user, without exposing the database port:
+
+```sh
+docker compose --env-file .env -f infra/compose.yaml exec postgres sh -ec 'PGPASSWORD="$APP_DB_PASSWORD" psql -h 127.0.0.1 -U "$APP_DB_USER" -d "$POSTGRES_DB"'
+```
+
+Inside psql:
+
+```sql
+\dt
+\d+ cases
+\d+ model_versions
+SELECT version_num FROM alembic_version;
+SELECT u.email, m.role FROM users u JOIN memberships m ON m.user_id = u.id ORDER BY u.email;
+SELECT medium_threshold, high_threshold, critical_threshold, alert_threshold FROM risk_settings;
+SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' ORDER BY tablename, indexname;
+```
+
+Use `\q` to exit. Do not query or share password hashes. [Phase 2 verification](verification/phase-2.md)
+records observed results and the boundary between database constraints and future
+service-layer rules such as tenant checks, last-admin protection and state transitions.
+
 ## Optional native backend development
 
 The supported baseline is Python 3.12; no system packages are installed by setup.
@@ -121,8 +194,8 @@ cd backend
 
 Native unit tests use isolated fixtures and need no service credentials. The
 recommended way to run the API is Compose because DB/Redis/S3 have no host ports.
-The API and worker share runtime code and dependencies. A future schema phase will
-add SQLAlchemy models, Alembic migrations and demo seed data. The database bootstrap
+The API and worker share runtime code and dependencies. SQLAlchemy models, Alembic
+migrations and the local seed command live in the backend. The database bootstrap
 only creates an unprivileged app login with CONNECT and schema USAGE, not CREATE or
 superuser rights. Migration credentials will stay separate from this app login.
 
@@ -167,8 +240,8 @@ exit, not automatic repair of every possible failure.
 
 ## Scope and remaining gates
 
-Phase 2 has not begun. All eighteen application tables, migrations, demo accounts,
-auth/RBAC/CSRF, uploads, ML, cases, dashboards, reports and deployment remain pending.
+Phase 3 has not begun. Auth/RBAC/CSRF, uploads, ML, case workflows, dashboards,
+reports and deployment remain pending.
 Legal pages, full navigation, favicon and custom 404 are Phase 9/launch work; the
 foundation does not display links to routes that do not exist. No real financial or
 personal data may be added. The existing security checklist retains its historical

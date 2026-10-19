@@ -8,6 +8,7 @@ requires-python = ">=3.12,<3.13"
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra"
+markers = ["database: requires the guarded disposable PostgreSQL test service"]
 
 [tool.ruff]
 target-version = "py312"
@@ -18,6 +19,10 @@ select = ["E", "F", "I", "UP", "B", "S"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101", "S105", "S106"]
+# Column inventories mirror the approved document's rows for review.
+"tests/database/schema_contract.py" = ["E501"]
+# Frozen SQL keeps each constraint readable as one expression; all other lint rules apply.
+"migrations/versions/*" = ["E501"]
 # This copied script is an executable integration test, not application code.
 "check_infra.py" = ["S101"]
 

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFile as execFileCallback } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+
+const execFile = promisify(execFileCallback);
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const env = await readFile(new URL("../../.env", import.meta.url), "utf8");
@@ -9,12 +12,17 @@ const port = env.match(/^API_PORT=(\d+)$/m)?.[1] ?? "8000";
 const api = `http://127.0.0.1:${port}/api/v1/health`;
 const composeArgs = ["compose", "--env-file", ".env", "-f", "infra/compose.yaml"];
 
-function compose(...args) {
-  const result = spawnSync("docker", [...composeArgs, ...args], {
-    cwd: root, encoding: "utf8", timeout: 180000,
-  });
-  if (result.status !== 0) throw new Error(`Compose ${args[0]} failed. Inspect this project's service status.`);
-  return result.stdout;
+async function compose(...args) {
+  // Keep the event loop responsive so fetch can retire idle/closed connections
+  // while Docker waits for a service to stop or start.
+  try {
+    const result = await execFile("docker", [...composeArgs, ...args], {
+      cwd: root, encoding: "utf8", timeout: 180000,
+    });
+    return result.stdout;
+  } catch {
+    throw new Error(`Compose ${args[0]} failed. Inspect this project's service status.`);
+  }
 }
 
 async function status(path, expected) {
@@ -43,20 +51,20 @@ console.log("PASS: live and ready return 200 with dependencies running");
 // Only this named Compose project's services are affected. Always restore them.
 for (const dependency of ["postgres", "redis", "object-storage"]) {
   try {
-    compose("stop", dependency);
+    await compose("stop", dependency);
     await status("live", 200);
     const result = await status("ready", 503);
     assert.equal(result.error.code, "DEPENDENCY_UNAVAILABLE");
     assert.ok(result.error.request_id);
     console.log(`PASS: ${dependency} stopped -> readiness 503; liveness 200`);
   } finally {
-    compose("start", dependency);
+    await compose("start", dependency);
     await waitReady();
   }
   console.log(`PASS: readiness recovers after ${dependency} restart`);
 }
 
-const services = compose("config", "--format", "json");
+const services = await compose("config", "--format", "json");
 const config = JSON.parse(services);
 for (const name of ["postgres", "redis", "object-storage", "worker"]) {
   assert.equal(config.services[name].ports?.length ?? 0, 0, `${name} must have no published ports`);

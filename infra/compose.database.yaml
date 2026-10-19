@@ -1,0 +1,13 @@
+# Opt-in tooling overlay. Main service configuration and volumes remain unchanged.
+services:
+  migration:
+    profiles: [database]
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+      target: runtime
+    env_file: ../.local/migration.env
+    networks: [services]
+    command: [alembic, upgrade, head]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]

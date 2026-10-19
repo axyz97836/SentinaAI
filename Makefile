@@ -1,6 +1,7 @@
 COMPOSE = docker compose --progress plain --env-file .env -f infra/compose.yaml
+DATABASE_COMPOSE = $(COMPOSE) -f infra/compose.database.yaml --profile database
 
-.PHONY: env up down status backend-check infra-check outage-check frontend-check browser-check check
+.PHONY: env up down status backend-check infra-check outage-check frontend-check browser-check check database-setup migrate seed database-check
 
 env:
 	node infra/scripts/setup-env.mjs
@@ -19,7 +20,7 @@ backend-check:
 	$(COMPOSE) --profile checks run --rm --no-deps backend-checks ruff check --no-cache .
 	$(COMPOSE) --profile checks run --rm --no-deps backend-checks ruff format --no-cache --check .
 	$(COMPOSE) --profile checks run --rm --no-deps backend-checks mypy --cache-dir=/tmp/mypy-cache app
-	$(COMPOSE) --profile checks run --rm --no-deps backend-checks pytest -p no:cacheprovider
+	$(COMPOSE) --profile checks run --rm --no-deps backend-checks pytest -p no:cacheprovider -m "not database"
 
 infra-check:
 	$(COMPOSE) --profile checks run --rm --no-deps backend-checks python check_infra.py
@@ -34,4 +35,16 @@ frontend-check:
 browser-check:
 	cd frontend && npm test
 
-check: backend-check frontend-check infra-check outage-check browser-check
+database-setup:
+	node infra/scripts/setup-database.mjs
+
+migrate: database-setup
+	$(DATABASE_COMPOSE) run --rm --no-deps --build migration
+
+seed: migrate
+	$(COMPOSE) run --rm --no-deps --build --user "$$(id -u):$$(id -g)" -v "$(CURDIR)/.local/demo:/run/demo" api python -m app.seed
+
+database-check:
+	node infra/scripts/check-database.mjs
+
+check: backend-check frontend-check database-check infra-check outage-check browser-check
