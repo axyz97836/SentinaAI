@@ -1,6 +1,6 @@
 # SentinelAI Phase 2 verification
 
-**Local Phase 2 verification: PASS. GitHub CI: startup failure, unresolved. Phase 3 has not started.**
+**Local Phase 2 verification: PASS. GitHub CI: PASS after [CI stabilization](ci-stabilization.md). Phase 3 has not started.**
 
 - Final verification date: **18 October 2026 IST** (17 October UTC).
 - Environment: existing local macOS/Apple Silicon workspace and Docker Desktop Linux containers.
@@ -362,7 +362,8 @@ stored in the repository or requested in chat, and no GitHub security control wa
 Both logs report `dependency failed to start: container sentinelai-object-storage-1 is
 unhealthy`. Hosted verification steps were skipped after startup failed; they are **not
 passes**. The captured job logs do not establish the underlying storage-service cause.
-CI needs a separate diagnostic/fix with storage-container logs before cleanup. The
+These historical failures were subsequently resolved by the verified
+[CI stabilization fixes and successful hosted run](ci-stabilization.md). The
 existing local results remain **153 database + 17 unit + 7 browser = 177 passing tests**;
 they were not rerun solely for this documentation/synchronization change.
 
