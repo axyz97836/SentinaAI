@@ -111,7 +111,14 @@ services:
       context: ..
       dockerfile: backend/Dockerfile
       target: runtime
-    environment: *backend-env
+    env_file: ../.local/auth.env
+    environment:
+      <<: *backend-env
+      AUTH_COOKIE_SECURE: "false"
+      AUTH_ALLOWED_ORIGINS: ${AUTH_ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000}
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
     ports: ["127.0.0.1:${API_PORT:-8000}:8000"]
     networks: [web, services]
     depends_on:

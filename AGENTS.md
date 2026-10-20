@@ -117,5 +117,6 @@ remaining limitations and local Git references. Do not mark future security cont
 as passed. Report GitHub branch/commit URLs, commits created in the current task,
 remote refs verified and any authentication/synchronization errors in the final response.
 
-**Current boundary:** Phase 2 is implemented and locally verified. Publishing it and
-maintaining this workflow do not authorize Phase 3. Wait for explicit owner approval.
+**Current boundary:** Phase 3 authentication, CSRF and RBAC are explicitly authorized
+on `feat/phase-03-auth`, based on the merged Phase 2 commit `39f8eb7`. Complete its
+verification, report, commit and push, then stop. Phase 4 requires new owner approval.

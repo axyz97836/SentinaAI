@@ -42,7 +42,7 @@ async function compose(command, input) {
   });
 }
 try {
-  await compose(["up", "-d", "--build", "--wait", "database-test"]);
+  await compose(["up", "-d", "--build", "--wait", "database-test", "redis-test"]);
   const sql = await readFile(new URL("../postgres/provision-migrator.sql", import.meta.url), "utf8");
   await compose(["exec", "-T", "database-test", "sh", "-ec",
     'psql -X -qAt -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'],

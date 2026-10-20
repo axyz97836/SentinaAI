@@ -4,7 +4,8 @@ Local foundation for a synthetic-data fraud and risk intelligence demonstration.
 Phase 1 contains a minimal Next.js page, FastAPI health endpoints, PostgreSQL,
 Redis, a Celery worker, and private S3-compatible development storage. Phase 2 adds
 the approved eighteen-table schema, Alembic migrations and fictional demo accounts.
-Authentication endpoints, fraud scoring, ingestion and investigation workflows are not implemented.
+Phase 3 adds session authentication, CSRF protection and reusable authorization guards.
+Fraud scoring, ingestion and investigation workflows are not implemented.
 
 The approved [implementation plan](docs/IMPLEMENTATION_PLAN.md) remains authoritative.
 All eleven planning/security documents are preserved. This project is not deployed.
@@ -65,7 +66,8 @@ Changing credentials does not automatically rotate initialized database users.
 If a port is busy, edit `FRONTEND_PORT`/`API_PORT` in `.env` and run `make up` again.
 For browser tests on a remapped frontend, set `PLAYWRIGHT_BASE_URL` to that address.
 The application uses same-origin health requests and enables no credentialed CORS.
-Authentication and its CSRF/CORS policy are explicitly deferred to Phase 3.
+Set `AUTH_ALLOWED_ORIGINS` to the exact local origins when changing ports. Authentication
+also uses the same-origin proxy; no credentialed CORS is enabled.
 
 ## Verification
 
@@ -154,7 +156,7 @@ The seed refuses any environment other than explicit `APP_ENV=local`.
 
 Default rule codes are documented, but complete approved initial parameter values
 are not. Therefore no rule definitions are seeded. No sessions, transactions, scores,
-alerts, cases, datasets, jobs or model versions are invented. Login remains Phase 3.
+alerts, cases, datasets, jobs or model versions are invented by the seed.
 
 To inspect as the restricted application user, without exposing the database port:
 
@@ -177,6 +179,67 @@ SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname = 'public
 Use `\q` to exit. Do not query or share password hashes. [Phase 2 verification](verification/phase-2.md)
 records observed results and the boundary between database constraints and future
 service-layer rules such as tenant checks, last-admin protection and state transitions.
+
+## Phase 3 authentication
+
+`make up` first creates or preserves `.local/auth.env`, a separate 0600 signing key
+used only by the API. Without Make, run `node infra/scripts/setup-auth-env.mjs`
+before Compose. Existing database, storage, Redis and demo credentials are preserved.
+
+The future frontend can call these same-origin endpoints:
+
+1. `GET /api/v1/auth/csrf` obtains JSON `csrf_token` and an HttpOnly pre-login cookie.
+2. `POST /api/v1/auth/login` sends only `email` and `password` as JSON, with
+   `X-CSRF-Token`. Browsers supply `Origin`; non-browser clients must supply the
+   configured exact origin too. The response sets an opaque HttpOnly session cookie
+   and returns identity plus a new session-bound `csrf_token`.
+3. `GET /api/v1/auth/me` rechecks the active account, expiry/revocation and current
+   organization membership/role. `GET /api/v1/auth/csrf` refreshes the CSRF proof after reload.
+4. `POST /api/v1/auth/logout` requires the session-bound header and approved Origin,
+   revokes the database session, expires both cookies and returns 204 with no body.
+
+Keep CSRF proofs in memory; never store session tokens in JavaScript or localStorage.
+Use `credentials: "same-origin"` (fetch default). Responses are `Cache-Control: no-store`.
+Sessions have an eight-hour absolute lifetime and 30-minute idle timeout by default.
+The current schema has no tenant selector: accounts with zero or multiple memberships
+are refused rather than choosing an organization or accepting a client-supplied ID.
+
+Local Compose explicitly uses non-Secure host-only cookies on loopback HTTP.
+Production configuration requires HTTPS origins, Secure `__Host-` cookies and a
+separately provisioned signing key; it does not turn this local stack into a deployment.
+Cookies always use HttpOnly, SameSite=Lax and Path=/, with no Domain attribute.
+Uvicorn ignores forwarded identity/IP headers. Behind the Next proxy, the peer-IP
+budget is shared by clients of that proxy; no untrusted forwarded IP is accepted.
+
+Redis DB 1 enforces atomic fixed-window budgets: 20 attempts per socket peer and
+5 per normalized account in 300 seconds. All attempts count, including successes,
+to bound password-hash work. Keys contain keyed digests and expire automatically.
+Configuration: `AUTH_LOGIN_IP_LIMIT`, `AUTH_LOGIN_ACCOUNT_LIMIT`,
+`AUTH_LOGIN_WINDOW_SECONDS`, `AUTH_SESSION_SECONDS`, `AUTH_IDLE_SECONDS`.
+Redis failure denies new logins with 503; existing PostgreSQL sessions and logout
+continue to work. Limits return 429 and `Retry-After` without account existence details.
+
+Successful login/logout and their session changes commit atomically with append-only
+audit records. Unauthenticated failures go to bounded, allowlisted security logs:
+the existing audit schema requires a known organization, so unknown users are never
+assigned a guessed tenant. API Docker logs rotate at 10 MiB, three files. No email,
+password, token, CSRF proof or credential hash is included in those log records.
+
+Run `make auth-cleanup` daily while the stack is running. It deletes at most 5,000
+expired or day-old revoked sessions per invocation in batches of 500, preserving
+active sessions and audit history. Schedule this command through the eventual approved
+operations environment; this phase does not install a host cron job or audit purge.
+
+Future APIs must use `Identity`, `require_roles("ADMIN")` where required and
+`organization_record` for tenant-scoped lookups. Both ANALYST and RISK_MANAGER retain
+the documented ordinary-operation permissions. Role/deactivation services must use
+the locked last-active-ADMIN invariant guard in the same transaction as their change.
+These helpers do not imply future business endpoints have been implemented or tested.
+
+`make database-check` also starts private disposable Redis and runs auth integration
+tests. Browser auth regression uses the existing fictional account, creates/revokes
+one real session and writes corresponding audit events; tracing is disabled for that
+test to keep credentials out of artifacts. See [Phase 3 evidence](verification/phase-3.md).
 
 ## Optional native backend development
 
@@ -240,8 +303,9 @@ exit, not automatic repair of every possible failure.
 
 ## Scope and remaining gates
 
-Phase 3 has not begun. Auth/RBAC/CSRF, uploads, ML, case workflows, dashboards,
-reports and deployment remain pending.
+Phase 3 implements backend auth/RBAC/CSRF only. The login frontend, uploads, ML,
+case workflows, dashboards, reports and deployment remain pending. Phase 4 requires
+explicit owner approval.
 Legal pages, full navigation, favicon and custom 404 are Phase 9/launch work; the
 foundation does not display links to routes that do not exist. No real financial or
 personal data may be added. The existing security checklist retains its historical

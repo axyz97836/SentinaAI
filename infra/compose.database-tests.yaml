@@ -14,6 +14,22 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+  redis-test:
+    image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
+    env_file: ../.local/database-tests.env
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        umask 077
+        printf 'requirepass %s\nmaxmemory 64mb\nmaxmemory-policy noeviction\nsave ""\n' "$$REDIS_PASSWORD" > /tmp/redis.conf
+        exec redis-server /tmp/redis.conf
+    networks: [test]
+    healthcheck:
+      test: [CMD-SHELL, 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 2s
+      timeout: 3s
+      retries: 30
   database-checks:
     build:
       context: ..
@@ -24,6 +40,7 @@ services:
       DB_HOST: database-test
       APP_ENV: test
       DATABASE_TESTS: "1"
+      REDIS_HOST: redis-test
     networks: [test]
     command: [pytest, -p, no:cacheprovider, tests/database]
     security_opt: [no-new-privileges:true]
