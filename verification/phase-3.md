@@ -6,8 +6,8 @@ Scope: Phase 3 only. No deployment, merge, login UI or Phase 4 work.
 
 ## Result and preservation
 
-Local verification: **PASS**. Hosted CI is pending the first checkpoint push and
-must reach a final successful result before Phase 3 is declared complete.
+Phase 3 implementation: **PASS**. Local verification and hosted CI passed for
+implementation commit `862210acdedb5c92359c889cd0d4e87076ce9f59`.
 The eleven approved documents match [their recorded SHA-256 hashes](approved-documents.sha256).
 No SQLAlchemy domain model, migration, database grant or dependency lock changed.
 The main database remains at `0001_initial_schema`, with eighteen domain tables
@@ -158,7 +158,7 @@ archive/purge. Those operational retention controls remain future release gates.
 | Approved document hash check | 11/11 OK |
 | Credential hygiene | Existing .env, migration, demo and new auth key files ignored, each mode 0600; auth key preserved on repeated setup |
 | Editor diagnostics | No errors found; editor test runner found no tests, so actual pytest/Playwright commands were used |
-| Hosted GitHub Actions | Pending first verified checkpoint push |
+| Hosted GitHub Actions | **PASS** for `862210a`: [run 39401188417](https://github.com/axyz97836/SentinaAI/actions/runs/39401188417), final status completed/success |
 
 Security coverage includes successful/wrong/unknown/inactive login; missing and
 invalid sessions; idle/absolute expiry; logout/replay; current roles/memberships;
@@ -240,9 +240,50 @@ not source deliverables.
 
 ## Git and hosted CI
 
-Implementation commit, remote confirmation and hosted workflow URL will be recorded
-after the verified checkpoint is pushed. No force push, main merge or deployment
-is authorized or performed.
+- Implementation commit: [`862210acdedb5c92359c889cd0d4e87076ce9f59`](https://github.com/axyz97836/SentinaAI/commit/862210acdedb5c92359c889cd0d4e87076ce9f59),
+  `feat(auth): implement sessions csrf and organization authorization`.
+- Pushed branch: [`feat/phase-03-auth`](https://github.com/axyz97836/SentinaAI/tree/feat/phase-03-auth).
+  `git ls-remote --heads origin feat/phase-03-auth` returned the exact implementation
+  hash after `git push -u origin HEAD:refs/heads/feat/phase-03-auth`.
+- Hosted implementation workflow: [39401188417](https://github.com/axyz97836/SentinaAI/actions/runs/39401188417),
+  final `completed` / `success`, job `118556016099`. Startup, database tests,
+  migration/seed, backend/frontend/infrastructure/outage checks, browser tests and
+  npm audit all completed successfully. Failure diagnostics were correctly skipped.
+  Retrieved job-log summaries: **209 database tests passed in 8.43 s**, **45 backend
+  unit tests passed in 1.36 s**, **8 browser tests passed in 3.7 s**; Ruff and mypy
+  passed; npm audit reported **0 vulnerabilities**.
+- No Git authentication or synchronization errors occurred. GitHub log retrieval
+  used the existing credential helper in memory; no token was displayed or stored.
+- Pre-commit scan: all **92 indexed files**, including the **27 changed files**,
+  were checked against locally stored secret values, forbidden private-file paths
+  and common private-key/GitHub-token/AWS-key signatures. **Zero findings**.
+  The staged diff and whitespace were reviewed. This is a scoped credential-hygiene
+  check, not a claim of exhaustive secret detection or a penetration test.
+- Working tree was clean and the local branch matched its upstream after the
+  implementation push. This report is the follow-up evidence-only commit; its own
+  hash is available from Git history. The final handoff records that commit and
+  the final hosted run after its push, avoiding a self-referential commit hash here.
+- This phase uses two logical commits: the coherent verified security
+  implementation/test boundary and this hosted-verification evidence update.
+  No force push, history rewrite, automatic main merge or deployment was performed.
+
+Additional executed verification commands included `git diff --cached --check`,
+`git ls-remote --heads origin main feat/phase-03-auth`,
+`shasum -a 256 -c verification/approved-documents.sha256`,
+`docker compose --env-file .env -f infra/compose.yaml config --quiet`, service `ps`,
+read-only SQL counts/revision inspection, direct liveness/readiness HTTP requests,
+credential permission/ignore inspection and signing-key setup idempotency.
+
+Inspect the result locally without exposing credentials:
+
+```sh
+git status --short --branch
+git log -2 --oneline
+git ls-remote --heads origin feat/phase-03-auth
+make status
+curl --fail http://127.0.0.1:8000/api/v1/health/live
+curl --fail http://127.0.0.1:8000/api/v1/health/ready
+```
 
 ## Remaining boundaries and operator steps
 
