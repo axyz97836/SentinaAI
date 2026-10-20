@@ -1,12 +1,16 @@
 COMPOSE = docker compose --progress plain --env-file .env -f infra/compose.yaml
 DATABASE_COMPOSE = $(COMPOSE) -f infra/compose.database.yaml --profile database
 
-.PHONY: env up down status backend-check infra-check outage-check frontend-check browser-check check database-setup migrate seed database-check
+.PHONY: env auth-env auth-cleanup up down status backend-check infra-check outage-check frontend-check browser-check check database-setup migrate seed database-check
 
 env:
 	node infra/scripts/setup-env.mjs
+	node infra/scripts/setup-auth-env.mjs
 
-up:
+auth-env:
+	node infra/scripts/setup-auth-env.mjs
+
+up: auth-env
 	$(COMPOSE) up -d --build --wait --wait-timeout 240
 
 down:
@@ -14,6 +18,9 @@ down:
 
 status:
 	$(COMPOSE) ps
+
+auth-cleanup:
+	$(COMPOSE) exec -T api python -m app.auth.cleanup
 
 backend-check:
 	$(COMPOSE) --profile checks build backend-checks

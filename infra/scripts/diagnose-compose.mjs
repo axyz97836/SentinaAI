@@ -6,10 +6,10 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const compose = ["compose", "--env-file", ".env", "-f", "infra/compose.yaml"];
 const secrets = new Set();
-for (const file of [".env", ".local/migration.env", ".local/database-tests.env"]) {
+for (const file of [".env", ".local/auth.env", ".local/migration.env", ".local/database-tests.env"]) {
   try {
     const body = await readFile(new URL(`../../${file}`, import.meta.url), "utf8");
-    for (const match of body.matchAll(/^(?:.*PASSWORD|S3_ACCESS_KEY|S3_SECRET_KEY)=(.+)$/gm)) {
+    for (const match of body.matchAll(/^(?:.*PASSWORD|AUTH_SECRET|S3_ACCESS_KEY|S3_SECRET_KEY)=(.+)$/gm)) {
       secrets.add(match[1]);
     }
   } catch (error) {

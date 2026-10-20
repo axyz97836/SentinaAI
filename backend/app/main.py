@@ -6,9 +6,14 @@ from uuid import uuid4
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException
 from starlette.responses import Response
 
+from app.auth.body_limit import AuthBodyLimitMiddleware
+from app.auth.errors import AuthError, unavailable
+from app.auth.routes import router as auth_router
+from app.auth.service import AuthService
 from app.config import Settings, get_settings
 from app.health import DependencyProbe, ReadinessProbe
 from app.observability import configure_logging
@@ -30,16 +35,24 @@ def error_response(request: Request, status: int, code: str, message: str) -> JS
     )
 
 
-def create_app(settings: Settings | None = None, probe: ReadinessProbe | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    probe: ReadinessProbe | None = None,
+    auth: AuthService | None = None,
+) -> FastAPI:
     configuration = settings or get_settings()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         dependencies = probe or DependencyProbe(configuration)
         app.state.probe = dependencies
+        authentication = auth or AuthService(configuration)
+        app.state.auth = authentication
         try:
             yield
         finally:
+            if auth is None:
+                authentication.close()
             if isinstance(dependencies, DependencyProbe):
                 dependencies.close()
 
@@ -51,6 +64,8 @@ def create_app(settings: Settings | None = None, probe: ReadinessProbe | None = 
         redoc_url=None,
         openapi_url=None,
     )
+    app.add_middleware(AuthBodyLimitMiddleware)
+    app.include_router(auth_router)
 
     @app.middleware("http")
     async def request_context(
@@ -76,7 +91,27 @@ def create_app(settings: Settings | None = None, probe: ReadinessProbe | None = 
                 "elapsed_ms": round((perf_counter() - started) * 1000),
             },
         )
+        if request.url.path in {"/api/v1/auth/login", "/api/v1/auth/logout"}:
+            logger.info(
+                "authentication outcome",
+                extra={
+                    "action": "auth_login" if request.url.path.endswith("login") else "auth_logout",
+                    "request_id": request.state.request_id,
+                    "status": response.status_code,
+                },
+            )
         return response
+
+    @app.exception_handler(AuthError)
+    async def auth_error(request: Request, exc: AuthError) -> JSONResponse:
+        response = error_response(request, exc.status, exc.code, exc.message)
+        if exc.retry_after is not None:
+            response.headers["Retry-After"] = str(exc.retry_after)
+        return response
+
+    @app.exception_handler(SQLAlchemyError)
+    async def database_error(request: Request, _exc: SQLAlchemyError) -> JSONResponse:
+        return await auth_error(request, unavailable())
 
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException) -> JSONResponse:

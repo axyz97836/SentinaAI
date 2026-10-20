@@ -9,7 +9,7 @@ COPY backend/alembic.ini ./alembic.ini
 COPY backend/migrations ./migrations
 USER sentinel
 EXPOSE 8000
-CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--no-server-header"]
+CMD ["uvicorn", "app.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--no-server-header", "--no-proxy-headers"]
 
 FROM runtime AS test
 USER root

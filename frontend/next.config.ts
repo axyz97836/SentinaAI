@@ -4,9 +4,9 @@ const config: NextConfig = {
   poweredByHeader: false,
   async rewrites() {
     const api = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8000";
-    return ["live", "ready"].map((probe) => ({
-      source: `/api/v1/health/${probe}`,
-      destination: `${api}/api/v1/health/${probe}`,
+    return ["health/live", "health/ready", "auth/csrf", "auth/login", "auth/me", "auth/logout"].map((path) => ({
+      source: `/api/v1/${path}`,
+      destination: `${api}/api/v1/${path}`,
     }));
   },
   async headers() {
