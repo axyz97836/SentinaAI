@@ -1,6 +1,6 @@
 # Phase 4 verification: CSV ingestion, private storage and durable jobs
 
-Updated: 2026-10-21. **Local verification complete, including CI harness correction; hosted rerun pending.**
+Updated: 2026-10-22. **Phase 4 verified locally and in hosted CI; ready for owner review.**
 Branch: feat/phase-04-ingestion.
 Base: 8cab9ffad78c76412c767acd831038c7bab9db7a (merged Phase 3/Ponytail main).
 Only Phase 4 is implemented. No merge, deployment or Phase 5 work is authorized.
@@ -140,6 +140,13 @@ The 50 focused cases overlap the unit suite and are not counted again. The 9 ing
 5 infrastructure and 8 outage check groups are separate, not inflated into pytest counts.
 Database breakdown: 153 schema + 56 auth + 44 ingestion cases.
 
+Hosted Linux CI for the final implementation/harness commit e9097f6 independently
+confirmed the same counts: 253 database tests (16.28 s), 95 backend unit tests (3.74 s),
+8 browser tests (5.9 s), and all 9 real integration checks. Lint, strict typing,
+frontend build, infrastructure/outage checks and the frontend dependency audit passed.
+The hosted log explicitly records stopped storage, QUEUED attempt 1,
+STORAGE_UNAVAILABLE and zero processed rows before successful retry and recovery.
+
 Ignored local logs: .local/phase4-focused.log, phase4-database.log, phase4-backend.log,
 phase4-frontend.log, phase4-integration.log, phase4-infra.log, phase4-outage.log,
 phase4-browser.log, phase4-audit.log and phase4-dev-audit.log (all under .local/).
@@ -228,7 +235,7 @@ Resolved material findings (none remain open):
 Contract review also removed unnecessary rejection of optional synthetic license metadata
 and spaces in merchant categories. Positive regression tests pass.
 
-**Verdict: Ship the verified Phase 4 scope after hosted CI succeeds.**
+**Verdict: Ship the verified Phase 4 scope.** Hosted CI passed; owner review is next.
 Not checked: production load, deployment security/retention/backups, future ML/scoring/UI
 or a formal security audit. These remain outside the authorized phase.
 
@@ -305,7 +312,22 @@ known secrets or matching credential patterns. No force push or merge occurred.
 
 [Hosted workflow](https://github.com/axyz97836/SentinaAI/actions/runs/39632621136)
 finished with failure at isolated ingestion seed setup; all preceding checks passed.
-The saved local results remain valid for unchanged application code. The Linux harness
-correction passes local integration; a final successful hosted result is still required.
-GitHub CLI is unavailable (gh: command not found); Git and the public read-only Actions
-API work. No authentication/synchronization conflict has been observed.
+The Linux harness correction is committed as
+[e9097f67a35bcde46f64597d20b496343cf60cbd](https://github.com/axyz97836/SentinaAI/commit/e9097f67a35bcde46f64597d20b496343cf60cbd).
+Its push succeeded and git ls-remote verified that exact remote hash on resume.
+[Corrected hosted workflow](https://github.com/axyz97836/SentinaAI/actions/runs/39633929091)
+finished **completed / success** for that exact commit. Downloaded logs confirmed
+356 application tests and all 9 integration checks, including genuine storage failure
+and worker retry. No unresolved test failure remains.
+
+The final follow-up changes only this report. Application code and the tested harness
+remain identical to e9097f6. Its final commit hash, remote synchronization and latest
+workflow result are verified separately in the completion response, avoiding a
+self-referencing commit hash in this file.
+
+GitHub CLI is unavailable (gh: command not found). Public Actions status queries work;
+anonymous log download returned HTTP 403, so logs were retrieved using the existing
+macOS Git credential manager, with credentials kept only in process memory. No token
+was requested in chat, printed or saved. Temporary CI-watch/download/scan scripts and
+logs remain ignored under .local/ and are not part of the commit. No Git push
+authentication or synchronization error occurred. No force push, merge or deployment.
