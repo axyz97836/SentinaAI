@@ -10,9 +10,17 @@ class SafeJSONFormatter(logging.Formatter):
         fields = {
             "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
-            "service": "api",
+            "service": getattr(record, "service", "api"),
         }
-        for name in ("action", "request_id", "status", "elapsed_ms", "dependency", "error_code"):
+        for name in (
+            "action",
+            "request_id",
+            "job_id",
+            "status",
+            "elapsed_ms",
+            "dependency",
+            "error_code",
+        ):
             if hasattr(record, name):
                 fields[name] = getattr(record, name)
         return json.dumps(fields)

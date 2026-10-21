@@ -82,7 +82,11 @@ def test_logging_uses_only_allowlisted_fields() -> None:
     record = logging.LogRecord("sentinelai", logging.ERROR, "", 0, "password=private", (), None)
     record.request_id = "request-reference"
     record.cookie = "do-not-log"
+    record.job_id = "job-reference"
+    record.service = "worker"
     result = SafeJSONFormatter().format(record)
     assert json.loads(result)["request_id"] == "request-reference"
+    assert json.loads(result)["job_id"] == "job-reference"
+    assert json.loads(result)["service"] == "worker"
     assert "private" not in result
     assert "do-not-log" not in result

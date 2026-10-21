@@ -5,7 +5,8 @@ Phase 1 contains a minimal Next.js page, FastAPI health endpoints, PostgreSQL,
 Redis, a Celery worker, and private S3-compatible development storage. Phase 2 adds
 the approved eighteen-table schema, Alembic migrations and fictional demo accounts.
 Phase 3 adds session authentication, CSRF protection and reusable authorization guards.
-Fraud scoring, ingestion and investigation workflows are not implemented.
+Phase 4 adds bounded CSV uploads, private storage and durable validation jobs.
+Fraud scoring and investigation workflows are not implemented.
 
 The approved [implementation plan](docs/IMPLEMENTATION_PLAN.md) remains authoritative.
 All eleven planning/security documents are preserved. This project is not deployed.
@@ -241,6 +242,49 @@ tests. Browser auth regression uses the existing fictional account, creates/revo
 one real session and writes corresponding audit events; tracing is disabled for that
 test to keep credentials out of artifacts. See [Phase 3 evidence](verification/phase-3.md).
 
+## Phase 4 CSV validation and jobs
+
+`POST /api/v1/ingestions` accepts multipart fields `file`, `purpose`, `source_kind`
+and optional `license_reference`, with the existing session cookie, Origin and
+`X-CSRF-Token`. Only ADMIN may submit TRAINING; all three roles may submit SCORING.
+Use a `.csv` filename and CSV media type (`text/csv`, `application/csv` or
+`application/vnd.ms-excel`). The endpoint returns 202 with `job_id`, `dataset_id`
+and `status: "QUEUED"` after private storage and the durable upload record commit.
+
+Limits: 10 MiB of file bytes, 10,000 data rows, one file, three bounded metadata
+fields, bounded multipart headers/overhead and a 60-second body-read timeout.
+The parser accepts strict UTF-8 with an optional BOM. Required columns are
+`external_id,customer_ref,occurred_at,amount,currency,merchant_category,country_code,channel`;
+optional columns are `device_ref,fraud_label`. Unknown columns, malformed values,
+formula prefixes and obvious prohibited identifiers are rejected. These syntactic
+checks cannot prove that a string is fictional: synthetic data remains an operator
+requirement. Public datasets fail closed until independent owner approval exists.
+
+Poll `GET /api/v1/jobs/{job_id}` for PostgreSQL-backed state, counts, up to 100 safe
+row errors and any pending rejected-object cleanup. Cross-organization IDs return
+404. `processed_rows` means valid rows examined in the reported VALIDATION phase;
+it does not mean scored transactions. Valid TRAINING files become VALIDATED and
+SUCCEEDED. Row-invalid files are rejected as a whole with their counts preserved.
+SCORING validates/stages only and ends FAILED/ACTIVE_MODEL_REQUIRED without a model
+(SCORING_NOT_AVAILABLE if one exists). No transaction, score, label or alert is created.
+
+The API republishes durable unfinished jobs every 15 seconds, with per-job cooldowns.
+Celery uses late acknowledgement, advisory locks across progress commits and at most
+three started attempts. Storage retries back off; duplicate terminal deliveries are
+no-ops. Interrupted uploads and rejected objects have durable cleanup that retries
+after storage recovery. Admission defaults are five pending imports and ten upload
+intents per organization in five minutes; these are demo limits, not measured capacity.
+
+`make ingestion-check` builds a separate `sentinelai-ingestion-tests` Compose project
+with its own database, Redis, storage volumes and loopback API port 18004. It uses
+existing credentials read-only to seed only that isolated database, exercises real
+uploads, Celery delivery, process restart and dependency recovery, then deletes only
+its isolated test resources. Its resolved configuration contains secrets and stays
+in ignored `.local/ingestion-tests.compose.json` with mode 0600. Do not run two copies
+at once. The main database, volumes and credentials are preserved.
+
+See [Phase 4 verification](verification/phase-4.md) for exact results and limitations.
+
 ## Optional native backend development
 
 The supported baseline is Python 3.12; no system packages are installed by setup.
@@ -303,9 +347,9 @@ exit, not automatic repair of every possible failure.
 
 ## Scope and remaining gates
 
-Phase 3 implements backend auth/RBAC/CSRF only. The login frontend, uploads, ML,
-case workflows, dashboards, reports and deployment remain pending. Phase 4 requires
-explicit owner approval.
+Phase 4 implements backend CSV validation and durable jobs. The login/upload frontend,
+ML and scoring, case workflows, dashboards, reports and deployment remain pending.
+Phase 5 requires separate explicit owner approval.
 Legal pages, full navigation, favicon and custom 404 are Phase 9/launch work; the
 foundation does not display links to routes that do not exist. No real financial or
 personal data may be added. The existing security checklist retains its historical
