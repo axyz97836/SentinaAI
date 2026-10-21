@@ -117,6 +117,25 @@ remaining limitations and local Git references. Do not mark future security cont
 as passed. Report GitHub branch/commit URLs, commits created in the current task,
 remote refs verified and any authentication/synchronization errors in the final response.
 
-**Current boundary:** Phase 3 authentication, CSRF and RBAC are explicitly authorized
-on `feat/phase-03-auth`, based on the merged Phase 2 commit `39f8eb7`. Complete its
-verification, report, commit and push, then stop. Phase 4 requires new owner approval.
+## Current development boundary
+
+Phases 1, 2 and 3 have been completed, verified
+and merged into main.
+
+Each phase requires explicit owner authorization. Historical completion notes
+are not authorization to restart work or advance to another phase.
+Phase 4 (secure CSV ingestion, private storage and durable jobs) is explicitly
+authorized on `feat/phase-04-ingestion`, based on current merged `origin/main`.
+Stop after verified commits, push and report; merging and Phase 5 need separate approval.
+
+Before starting a new phase:
+1. Confirm the previous phase is merged into main.
+2. Synchronize local main with origin/main.
+3. Create a dedicated phase-specific feature branch.
+4. Read the current approved implementation plan.
+5. Execute only the authorized phase.
+6. Verify, commit, push and report.
+7. Wait for owner review before merging or advancing.
+
+Do not treat historical phase instructions as
+authorization to restart completed work.

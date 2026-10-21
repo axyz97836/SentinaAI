@@ -1,4 +1,4 @@
-name: Phase 1 foundation
+name: SentinelAI verification
 on: [push, pull_request]
 permissions:
   contents: read
@@ -23,6 +23,7 @@ jobs:
       - run: make database-check
       - run: make migrate seed
       - run: make backend-check frontend-check infra-check outage-check
+      - run: make ingestion-check
       - run: npm ci --ignore-scripts
         working-directory: frontend
       - run: npx playwright install --with-deps chromium

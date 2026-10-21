@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from time import perf_counter
 from uuid import uuid4
 
+import anyio
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -16,6 +17,9 @@ from app.auth.routes import router as auth_router
 from app.auth.service import AuthService
 from app.config import Settings, get_settings
 from app.health import DependencyProbe, ReadinessProbe
+from app.ingestion.routes import router as ingestion_router
+from app.ingestion.service import reconcile
+from app.ingestion.storage import PrivateStorage
 from app.observability import configure_logging
 
 logger = configure_logging()
@@ -48,9 +52,34 @@ def create_app(
         app.state.probe = dependencies
         authentication = auth or AuthService(configuration)
         app.state.auth = authentication
+        storage = PrivateStorage(configuration)
+        app.state.storage = storage
+
+        async def recover_ingestions() -> None:
+            from app.worker import publish_ingestion
+
+            while True:
+                try:
+                    await anyio.to_thread.run_sync(
+                        reconcile, authentication.sessions, storage, publish_ingestion
+                    )
+                except Exception:
+                    logger.warning(
+                        "ingestion recovery unavailable",
+                        extra={"action": "ingestion_recovery", "error_code": "UNAVAILABLE"},
+                    )
+                await anyio.sleep(15)
+
         try:
-            yield
+            async with anyio.create_task_group() as tasks:
+                if configuration.app_env != "test" and auth is None:
+                    tasks.start_soon(recover_ingestions)
+                try:
+                    yield
+                finally:
+                    tasks.cancel_scope.cancel()
         finally:
+            storage.close()
             if auth is None:
                 authentication.close()
             if isinstance(dependencies, DependencyProbe):
@@ -66,6 +95,7 @@ def create_app(
     )
     app.add_middleware(AuthBodyLimitMiddleware)
     app.include_router(auth_router)
+    app.include_router(ingestion_router)
 
     @app.middleware("http")
     async def request_context(

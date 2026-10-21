@@ -1,7 +1,7 @@
 COMPOSE = docker compose --progress plain --env-file .env -f infra/compose.yaml
 DATABASE_COMPOSE = $(COMPOSE) -f infra/compose.database.yaml --profile database
 
-.PHONY: env auth-env auth-cleanup up down status backend-check infra-check outage-check frontend-check browser-check check database-setup migrate seed database-check
+.PHONY: env auth-env auth-cleanup up down status backend-check infra-check outage-check ingestion-check frontend-check browser-check check database-setup migrate seed database-check
 
 env:
 	node infra/scripts/setup-env.mjs
@@ -35,6 +35,9 @@ infra-check:
 outage-check:
 	node infra/scripts/check-stack.mjs
 
+ingestion-check:
+	node infra/scripts/check-ingestion.mjs
+
 frontend-check:
 	$(COMPOSE) build frontend
 	$(COMPOSE) run --rm --no-deps frontend npm run check
@@ -54,4 +57,4 @@ seed: migrate
 database-check:
 	node infra/scripts/check-database.mjs
 
-check: backend-check frontend-check database-check infra-check outage-check browser-check
+check: backend-check frontend-check database-check infra-check outage-check ingestion-check browser-check
