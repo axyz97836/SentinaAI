@@ -1,6 +1,6 @@
 # Phase 4 verification: CSV ingestion, private storage and durable jobs
 
-Updated: 2026-10-21. **Local verification complete; publication and hosted CI pending.**
+Updated: 2026-10-21. **Local verification complete, including CI harness correction; hosted rerun pending.**
 Branch: feat/phase-04-ingestion.
 Base: 8cab9ffad78c76412c767acd831038c7bab9db7a (merged Phase 3/Ponytail main).
 Only Phase 4 is implemented. No merge, deployment or Phase 5 work is authorized.
@@ -184,6 +184,13 @@ Only the isolated project's resources were removed. No main database reset or vo
   network-enabled build container, preserving app network restrictions.
 - Existing certifi advisory fixed and audit rerun.
 - Outage harness dependency restart issue fixed and verified as detailed above.
+- The first hosted run passed database/backend/frontend/infra/outage checks, then failed
+  while seeding the separate ingestion test database. The harness used root with all
+  capabilities dropped to read a host-user-owned 0600 credential file. A disposable
+  Linux file test reproduced restricted-root denial and matching-owner success. The
+  isolated seed now uses the host UID/GID, matching the existing Makefile seed pattern.
+  File permissions and assertions remain unchanged. The corrected local integration run
+  passed all nine checks again, including stopped storage, failed attempt and recovery.
 
 ## Ponytail Review: final
 
@@ -213,6 +220,10 @@ Resolved material findings (none remain open):
 5. **The outage harness restored the failed dependency.** Worker-only start and explicit
    stopped-storage/readiness assertions prove a real failure/retry in isolation. Skipping
    the fix would claim recovery coverage without inducing the outage.
+6. **The isolated seed could not read credentials on Linux CI.** Capability-restricted
+   root cannot read another user's 0600 file. Using the host UID/GID preserves permissions
+   and matches the existing seed command. A Linux permission reproduction and the full
+   nine-check local integration rerun pass; skipping this fix prevents hosted verification.
 
 Contract review also removed unnecessary rejection of optional synthetic license metadata
 and spaces in merchant categories. Positive regression tests pass.
@@ -287,6 +298,14 @@ Exact origin: https://github.com/axyz97836/SentinaAI.
 [Branch](https://github.com/axyz97836/SentinaAI/tree/feat/phase-04-ingestion).
 [Base](https://github.com/axyz97836/SentinaAI/commit/8cab9ffad78c76412c767acd831038c7bab9db7a).
 
-Phase 4 commits, push, remote verification and hosted workflow URL: pending publication.
+Implementation commit: [87715f02b1de64521ce078d810445f159e4c8003](https://github.com/axyz97836/SentinaAI/commit/87715f02b1de64521ce078d810445f159e4c8003).
+Pushed with explicit HEAD:refs/heads/feat/phase-04-ingestion; git ls-remote verified
+that exact remote hash. The post-commit scan covered 150 reachable blobs and found no
+known secrets or matching credential patterns. No force push or merge occurred.
+
+[Hosted workflow](https://github.com/axyz97836/SentinaAI/actions/runs/39632621136)
+finished with failure at isolated ingestion seed setup; all preceding checks passed.
+The saved local results remain valid for unchanged application code. The Linux harness
+correction passes local integration; a final successful hosted result is still required.
 GitHub CLI is unavailable (gh: command not found); Git and the public read-only Actions
 API work. No authentication/synchronization conflict has been observed.

@@ -139,7 +139,8 @@ async function prepareIsolatedStack() {
     child.stdin.end(`\\set migration_password '${migrationPassword}'\n${sql}`);
   });
   await compose("run", "--rm", "--no-deps", "--build", "migration");
-  await compose("run", "--rm", "--no-deps", "--build", "--user", "0", "-v",
+  // Match the credential file owner: root with cap_drop=ALL cannot read another UID's 0600 file.
+  await compose("run", "--rm", "--no-deps", "--build", "--user", `${process.getuid()}:${process.getgid()}`, "-v",
     `${fileURLToPath(credentialPath)}:/run/demo/credentials.json:ro`, "api", "python", "-m", "app.seed");
   await compose("up", "-d", "--build", "--wait", "api", "worker");
   console.log("Isolated ingestion test stack ready; main services and volumes are untouched.");
