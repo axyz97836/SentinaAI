@@ -71,6 +71,9 @@ inferred from customer/device references.
 CLI: `python -m app.ml.synthetic --rows 2000 --seed 42`; CSV goes to stdout and a clear
 synthetic label/count summary goes to stderr. Save generated data only under ignored
 local paths. Nothing generated is committed or ingested into the main stack here.
+The CLI was executed in a disposable container: seed 42 produced **2,000 rows,
+1,830 legitimate and 170 suspicious labels (8.5%)**, plus one CSV header. Its temporary
+CSV disappeared with that container. These are class counts, not model evaluation metrics.
 
 Trusted loading checks organization, TRAINING purpose, VALIDATED state, schema version 1,
 server-derived key, size and approved provenance. Existing bounded storage reads verify
@@ -101,6 +104,11 @@ audit or guarantee. Sources: `https://pypi.org/pypi/{package}/{version}/json` fo
 Latest releases were inspected too: scikit-learn 1.9.1 adds narwhals and joblib 1.6.0 adds
 cloudpickle. The proposed compatible set avoids those additional runtime packages.
 
+`pip-audit -r /tmp/proposed.txt --disable-pip --no-deps`, executed in the existing test
+image with only the proposed five pinned versions mounted read-only, returned **No known
+vulnerabilities found**. No packages were installed by this audit. Output is in ignored
+`.local/phase5-proposed-ml-audit.log`. Full resolved/hash-locked audits remain necessary.
+
 Owner approval was requested for supporting packages not individually named in the
 planning documents. **No package installed and no dependency manifest/lock changed.**
 After approval: regenerate hash-required runtime/development locks, run pip check and
@@ -123,6 +131,10 @@ no arbitrary pickle/joblib loading has been introduced.
   Ruff lint PASS, 46 files formatted, strict mypy PASS across 28 modules. This includes
   all **21 new checkpoint tests** and the previous 95 backend unit tests.
   Output saved to ignored `.local/phase5-backend-checkpoint.log`.
+- Resume-requested focused rerun:
+  `docker compose --env-file .env -f infra/compose.yaml --profile checks run --rm --no-deps backend-checks pytest -p no:cacheprovider tests/test_training_data.py tests/test_private_storage.py`
+  — **25 passed in 1.84 s**, including missing/corrupted storage objects and loader
+  size/digest arguments/row-count rejection. These overlap the 116 backend tests.
 
 Tests exercise reproducibility, different seeds, canonical ingestion compatibility,
 class overlap, sample limits, chronological boundaries, identical timestamps,
@@ -130,9 +142,10 @@ one-class holdout, missing/invalid labels, duplicate IDs, unsupported columns,
 purpose/status/schema/key/size/organization/provenance rejection.
 
 No model metrics, artifact equivalence, training API, Celery training job or activation
-has been executed. Database/browser/infra/outage/ingestion/frontend full regressions and
-real ML integration remain required after the complete implementation. Main read-only
-health/schema checks above are not substitutes for those tests.
+has been executed. The existing full regression workflow passed for this checkpoint
+as detailed below; real ML integration and all affected regressions remain required
+after the complete implementation. Main read-only health/schema checks above are
+not substitutes for those tests.
 
 ## Review and publication
 
@@ -147,8 +160,43 @@ historical blobs**, and main API/worker logs: no findings. It compares known loc
 credential values and common GitHub/AWS/private-key patterns; it is not exhaustive
 secret detection, SAST or evidence of absence of unknown credentials. No private data,
 generated CSV/model object, credentials or logs are staged. Commit/ref verification
-and hosted CI evidence will be recorded as executed.
+and hosted CI evidence follow below.
 **Phase 5 is not complete or ready to merge.**
+
+### Published checkpoint
+
+Commit [8ac7cace4470e626be4c3fa4b997612b63677295](https://github.com/axyz97836/SentinaAI/commit/8ac7cace4470e626be4c3fa4b997612b63677295)
+contains the completed data-preparation unit and its evidence. A second scan before push
+covered **118 files and 159 reachable historical blobs**, plus main API/worker logs,
+with no findings under the same limited detection method.
+
+Pushed with `git push -u origin HEAD:refs/heads/feat/phase-05-ml-training`.
+`git ls-remote origin refs/heads/feat/phase-05-ml-training` returned the exact commit above.
+[Branch](https://github.com/axyz97836/SentinaAI/tree/feat/phase-05-ml-training).
+[Checkpoint workflow](https://github.com/axyz97836/SentinaAI/actions/runs/39776428892)
+finished **completed / success** for that exact SHA. Downloaded hosted logs confirm:
+
+| Hosted check | Actual result |
+|---|---|
+| `make database-check` | **253 passed**, 1 existing warning, 16.68 s |
+| `make backend-check` | Ruff lint/format and strict mypy PASS; **116 passed**, 253 deselected, 4 existing warnings, 5.15 s |
+| `make frontend-check` | PASS |
+| `make infra-check` | PASS |
+| `make outage-check` | PASS |
+| `make ingestion-check` | **9 integration checks passed**, isolated resources removed |
+| Browser `npm test` | **8 passed**, 5.4 s |
+| Frontend dependency audit | PASS |
+
+Total distinct automated application tests: **377 = 253 database + 116 backend + 8 browser**.
+Focused tests overlap these totals and are not counted again. Logs were retrieved using
+the existing macOS Git credential manager with credentials held only in process memory;
+no token was requested, printed or saved. The downloaded archive is ignored local evidence.
+
+The follow-up report-only commit records this checkpoint's hosted results. Its exact
+remote hash and final workflow outcome are verified separately in the completion response
+to avoid a self-referencing report commit. No application/test changes followed the
+successful checkpoint workflow.
+No force push, merge, deployment, authentication error or synchronization conflict occurred.
 
 Community source inspected: Pasquale Molinaro,
 [Leakage in ML Pipelines: How to build a bulletproof preprocessing architecture](https://dev.to/pasquale_molinaro/leakage-in-ml-pipelines-how-to-build-a-bulletproof-preprocessing-architecture-1ip4).
