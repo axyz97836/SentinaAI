@@ -24,6 +24,7 @@ jobs:
       - run: make migrate seed
       - run: make backend-check frontend-check infra-check outage-check
       - run: make ingestion-check
+      - run: make model-check
       - run: npm ci --ignore-scripts
         working-directory: frontend
       - run: npx playwright install --with-deps chromium

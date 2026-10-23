@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.database import database_engine
 from app.ingestion.processing import process_job
 from app.ingestion.storage import PrivateStorage
+from app.ml.processing import process_training
 from app.observability import configure_logging
 
 logger = configure_logging()
@@ -68,4 +69,47 @@ celery_app.task(bind=True, name="ingestion.process_csv", max_retries=2)(process_
 def publish_ingestion(job_id: str, dataset_id: str) -> None:
     celery_app.send_task(
         "ingestion.process_csv", kwargs={"job_id": job_id, "dataset_id": dataset_id}
+    )
+
+
+def train_baseline(self: Any, job_id: str, training_dataset_id: str) -> None:
+    try:
+        identifiers = UUID(job_id), UUID(training_dataset_id)
+    except (ValueError, TypeError, AttributeError):
+        return
+    configuration = get_settings()
+    engine = database_engine(configuration.database_url)
+    storage = PrivateStorage(configuration)
+    try:
+        if process_training(engine, storage, *identifiers):
+            raise self.retry(countdown=10 * 2**self.request.retries)
+    except Retry:
+        raise
+    except Exception:
+        logger.warning(
+            "training task interrupted",
+            extra={
+                "action": "model_train",
+                "error_code": "TRAINING_INTERRUPTED",
+                "service": "worker",
+                "job_id": str(identifiers[0]),
+            },
+        )
+    finally:
+        storage.close()
+        engine.dispose()
+
+
+celery_app.task(
+    bind=True, name="models.train_baseline", max_retries=2, soft_time_limit=240, time_limit=300
+)(train_baseline)
+
+
+def publish_training(job_id: str, dataset_id: str) -> None:
+    celery_app.send_task(
+        "models.train_baseline",
+        kwargs={
+            "job_id": job_id,
+            "training_dataset_id": dataset_id,
+        },
     )

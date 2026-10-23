@@ -6,6 +6,7 @@ Redis, a Celery worker, and private S3-compatible development storage. Phase 2 a
 the approved eighteen-table schema, Alembic migrations and fictional demo accounts.
 Phase 3 adds session authentication, CSRF protection and reusable authorization guards.
 Phase 4 adds bounded CSV uploads, private storage and durable validation jobs.
+Phase 5 adds deterministic baseline training, verified private artifacts and explicit model activation.
 Fraud scoring and investigation workflows are not implemented.
 
 The approved [implementation plan](docs/IMPLEMENTATION_PLAN.md) remains authoritative.
@@ -285,6 +286,49 @@ at once. The main database, volumes and credentials are preserved.
 
 See [Phase 4 verification](verification/phase-4.md) for exact results and limitations.
 
+## Phase 5 model training and activation
+
+Generate fictional TRAINING CSV locally (the summary goes to stderr, CSV to the ignored file):
+
+```sh
+docker compose --env-file .env -f infra/compose.yaml run --rm --no-deps api python -m app.ml.synthetic --rows 2000 --seed 42 > .local/synthetic-training.csv
+```
+
+Upload it as TRAINING through the authenticated Phase 4 endpoint. After its job succeeds,
+an ADMIN sends `POST /api/v1/admin/models/train` with `{"training_dataset_id":"<dataset UUID>"}`,
+the session cookie, allowed Origin and CSRF header. The 202 response contains a durable job ID.
+Poll `/api/v1/jobs/{id}`; successful training returns `model_version_id`. Training never activates
+the candidate. ADMIN lists `/api/v1/admin/models` and explicitly sends `{}` to
+`POST /api/v1/admin/models/{id}/activate`. All authenticated roles can read `/api/v1/models/active`.
+
+The worker revalidates private CSV bytes, SHA-256, provenance, schema and class counts.
+The chronological split is 60/20/20 with tied timestamps kept together. Both models and
+all scalers/encoders fit only the training partition. Validation F1 selects a threshold
+from 0.05–0.95 in steps of 0.05; final test data is never used for selection. Persisted
+metrics distinguish trapezoidal PR-AUC from average precision. Isolation Forest reports
+an empirical percentile against its training distribution, not a fraud probability.
+
+Features: log amount, cyclical UTC hour/weekday, currency, country, channel and merchant
+category. Identifiers, devices and labels are excluded. No customer history is invented;
+amounts are nominal input-currency units, not FX-converted. Synthetic results do not establish
+real-world fraud accuracy or probability calibration. See [actual metrics](verification/phase-5.md).
+
+Artifacts use a versioned envelope and Python pickle, restricted to worker-generated private
+keys and successful MODEL_TRAIN provenance in PostgreSQL. Digest, package versions and feature
+schema are checked before deserialization. Uploaded model files and arbitrary paths are never
+accepted. Pickle is executable: these checks rely on the trusted database, worker and private
+store; simultaneous compromise is not addressed. Active and prior versions are preserved.
+
+One pending training job per organization and three admissions per 15 minutes bound demand.
+Training has at most three started attempts, one CPU thread and 240/300-second soft/hard task
+limits. Duplicate delivery is locked; interrupted work is republished by the API recovery loop.
+Activation and its audit event are one organization-locked database transaction.
+
+Run `make model-check` for the real upload/train/artifact/activate workflow plus authorization,
+tampering and outage checks. It reuses the isolated ingestion test project and existing local
+credentials read-only; do not run it concurrently with `make ingestion-check`. Main volumes
+and the development organization's model state are preserved.
+
 ## Optional native backend development
 
 The supported baseline is Python 3.12; no system packages are installed by setup.
@@ -347,9 +391,9 @@ exit, not automatic repair of every possible failure.
 
 ## Scope and remaining gates
 
-Phase 4 implements backend CSV validation and durable jobs. The login/upload frontend,
-ML and scoring, case workflows, dashboards, reports and deployment remain pending.
-Phase 5 requires separate explicit owner approval.
+Phase 5 implements backend model training and activation. The login/upload frontend,
+operational scoring, case workflows, dashboards, reports and deployment remain pending.
+Phase 6 requires separate explicit owner approval.
 Legal pages, full navigation, favicon and custom 404 are Phase 9/launch work; the
 foundation does not display links to routes that do not exist. No real financial or
 personal data may be added. The existing security checklist retains its historical
