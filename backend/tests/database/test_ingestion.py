@@ -32,6 +32,7 @@ from app.models import (
     Job,
     JobError,
     Membership,
+    ModelVersion,
     Organization,
     SessionRecord,
     Transaction,
@@ -111,6 +112,7 @@ def ingestion(migrated_engine, password_hash):
             db.execute(delete(JobError).where(JobError.job_id.in_(jobs)))
             db.execute(delete(AuditLog).where(AuditLog.organization_id == organization.id))
             db.execute(delete(Job).where(Job.organization_id == organization.id))
+            db.execute(delete(ModelVersion).where(ModelVersion.organization_id == organization.id))
             db.execute(delete(Dataset).where(Dataset.organization_id == organization.id))
             db.execute(delete(Membership).where(Membership.organization_id == organization.id))
             db.execute(delete(User).where(User.id == user.id))

@@ -79,6 +79,7 @@ def job_status(identifier: UUID, db: Database, principal: Identity) -> dict[str,
     return {
         "job_id": job.id,
         "dataset_id": job.dataset_id,
+        "model_version_id": job.model_version_id,
         "type": job.type,
         "status": job.status,
         "total_rows": job.total_rows,
@@ -95,7 +96,11 @@ def job_status(identifier: UUID, db: Database, principal: Identity) -> dict[str,
             {"row_number": error.row_number, "code": error.code, "summary": error.summary}
             for error in errors
         ],
-        "has_output": False,
-        "progress_phase": "VALIDATION" if job.type == "CSV_IMPORT" else None,
+        "has_output": job.status == "SUCCEEDED" and job.model_version_id is not None,
+        "progress_phase": "VALIDATION"
+        if job.type == "CSV_IMPORT"
+        else "TRAINING"
+        if job.type == "MODEL_TRAIN"
+        else None,
         "completed_with_row_errors": job.status == "SUCCEEDED" and job.failed_rows > 0,
     }

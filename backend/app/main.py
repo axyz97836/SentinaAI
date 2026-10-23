@@ -20,6 +20,8 @@ from app.health import DependencyProbe, ReadinessProbe
 from app.ingestion.routes import router as ingestion_router
 from app.ingestion.service import reconcile
 from app.ingestion.storage import PrivateStorage
+from app.ml.processing import reconcile_training
+from app.ml.routes import router as models_router
 from app.observability import configure_logging
 
 logger = configure_logging()
@@ -56,12 +58,15 @@ def create_app(
         app.state.storage = storage
 
         async def recover_ingestions() -> None:
-            from app.worker import publish_ingestion
+            from app.worker import publish_ingestion, publish_training
 
             while True:
                 try:
                     await anyio.to_thread.run_sync(
                         reconcile, authentication.sessions, storage, publish_ingestion
+                    )
+                    await anyio.to_thread.run_sync(
+                        reconcile_training, authentication.sessions, storage, publish_training
                     )
                 except Exception:
                     logger.warning(
@@ -96,6 +101,7 @@ def create_app(
     app.add_middleware(AuthBodyLimitMiddleware)
     app.include_router(auth_router)
     app.include_router(ingestion_router)
+    app.include_router(models_router)
 
     @app.middleware("http")
     async def request_context(

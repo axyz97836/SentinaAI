@@ -22,7 +22,7 @@ let csrf;
 let passed = 0;
 let ownsStack = false;
 const started = new Date().toISOString();
-const marker = "phase4-e2e-fictional-marker";
+const marker = process.argv.includes("--models") ? "fictional-c-" : "phase4-e2e-fictional-marker";
 const header = "external_id,customer_ref,occurred_at,amount,currency,merchant_category,country_code,channel";
 const row = `${marker},fictional-customer,2026-10-20T10:00:00Z,12.34,INR,grocery,IN,WEB`;
 const csv = `${header}\n${row}\n`;
@@ -32,7 +32,7 @@ const pass = name => { passed++; console.log(`PASS ${passed}: ${name}`); };
 async function compose(...args) {
   try {
     const result = await execFile("docker", [...composeArgs, ...args], {
-      cwd: root, encoding: "utf8", timeout: 180000, maxBuffer: 8 * 1024 * 1024,
+      cwd: root, encoding: "utf8", timeout: 300000, maxBuffer: 8 * 1024 * 1024,
     });
     return result.stdout;
   } catch {
@@ -97,6 +97,17 @@ async function startWorkerOnly() {
   await execFile("docker", ["start", id], { cwd: root, timeout: 30000 });
 }
 
+async function loginAs(email) {
+  if (csrf) await request("/auth/logout", { method: "POST" });
+  csrf = (await (await request("/auth/csrf")).json()).csrf_token;
+  const login = await request("/auth/login", { method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password: credentials.accounts[email] }),
+  });
+  assert.equal(login.status, 200, "Existing synthetic login must succeed");
+  csrf = (await login.json()).csrf_token;
+}
+
 async function prepareIsolatedStack() {
   const { stdout } = await execFile("docker", ["compose", "--env-file", ".env",
     "-f", "infra/compose.yaml", "config", "--format", "json"], { cwd: root });
@@ -149,13 +160,11 @@ async function prepareIsolatedStack() {
 try {
   await prepareIsolatedStack();
   await ready();
-  csrf = (await (await request("/auth/csrf")).json()).csrf_token;
-  const login = await request("/auth/login", { method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password: credentials.accounts[email] }),
-  });
-  assert.equal(login.status, 200, "Existing synthetic admin login must succeed");
-  csrf = (await login.json()).csrf_token;
+  await loginAs(email);
+  if (process.argv.includes("--models")) {
+    const { verifyModels } = await import("./check-models.mjs");
+    await verifyModels({ compose, request, terminal, poll, ready, pass, loginAs, startWorkerOnly, marker });
+  } else {
   const valid = await upload();
   const validated = await terminal(valid);
   assert.equal(validated.status, "SUCCEEDED");
@@ -228,15 +237,27 @@ try {
   assert.equal(retried.processed_rows, 1);
   pass("real storage outage retries with durable attempts and no duplicate progress");
 
+  }
   const logs = await compose("logs", "--since", started, "api", "worker");
+  assert.ok(logs.includes("http_request"), "API log capture must include actual requests");
+  assert.ok(logs.includes("worker-1"), "Worker log capture must include the test worker");
   assert.ok(!logs.includes(marker), "Raw CSV must not enter logs");
   for (const secret of [...Object.values(credentials.accounts), ...cookies.values(), csrf]) {
     if (secret) assert.ok(!logs.includes(secret), "Credentials must not enter logs");
   }
   assert.ok(credentialBytes.equals(await readFile(credentialPath)), "Credentials must remain unchanged");
   pass("API/worker logs omit fixture rows and credentials; credential file unchanged");
+} catch (error) {
+  if (ownsStack) {
+    try {
+      const logs = await compose("logs", "--no-color", "api", "worker");
+      await writeFile(new URL("../../.local/integration-failure.log", import.meta.url), logs,
+        { mode: 0o600 });
+    } catch { /* Preserve the original failure if diagnostics are unavailable. */ }
+  }
+  throw error;
 } finally {
   // This fixed project owns only isolated test volumes, never the main development volumes.
   if (ownsStack) await compose("down", "--volumes", "--remove-orphans");
 }
-console.log(`${passed} ingestion integration checks passed; isolated resources removed.`);
+console.log(`${passed} ${process.argv.includes("--models") ? "model" : "ingestion"} integration checks passed; isolated resources removed.`);

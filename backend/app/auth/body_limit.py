@@ -10,7 +10,9 @@ class AuthBodyLimitMiddleware:
         self.limit = limit
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or not scope["path"].startswith("/api/v1/auth/"):
+        if scope["type"] != "http" or not scope["path"].startswith(
+            ("/api/v1/auth/", "/api/v1/admin/models")
+        ):
             await self.app(scope, receive, send)
             return
         body = bytearray()
@@ -25,7 +27,7 @@ class AuthBodyLimitMiddleware:
                     content={
                         "error": {
                             "code": "BODY_TOO_LARGE",
-                            "message": "Authentication request is too large.",
+                            "message": "Request body is too large.",
                             "request_id": scope.get("state", {}).get("request_id"),
                             "field_errors": {},
                         }
