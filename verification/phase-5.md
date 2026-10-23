@@ -1,6 +1,6 @@
 # Phase 5 verification: training, evaluation, versioning and activation
 
-Updated: 2026-10-23. **Implementation verified locally; final publication/hosted CI pending.**
+Updated: 2026-10-23. **Phase 5 verified locally and in hosted CI; ready for owner review.**
 Branch: `feat/phase-05-ml-training`.
 Base: `e231674d5e6fbaa8167d1d10a9c0c4d59d099f6d` (merged Phase 4).
 Only Phase 5 is implemented. No merge, deployment or Phase 6 is authorized.
@@ -254,7 +254,7 @@ Resolved findings:
    Both integration modes were rerun with these non-vacuous assertions.
 
 Formatting findings were corrected before final checks. No material finding remains open.
-**Verdict: local Phase 5 implementation is ready for hosted verification and owner review.**
+**Verdict: Ship the verified Phase 5 scope for owner review.** Hosted CI passed.
 Not checked: production scale/deployment, formal independent security audit, real-world
 model performance/calibration, future scoring/SHAP/rule behavior or public-data licensing.
 
@@ -301,7 +301,25 @@ credentials, private storage, logs or resolved secret-bearing Compose files are 
 
 Exact origin: https://github.com/axyz97836/SentinaAI.
 [Phase 5 branch](https://github.com/axyz97836/SentinaAI/tree/feat/phase-05-ml-training).
-Implementation commit, remote ref and final hosted evidence will be recorded after execution.
+Implementation commit:
+[198f425d7cdd81f02a1ae719004c2d38070f23c2](https://github.com/axyz97836/SentinaAI/commit/198f425d7cdd81f02a1ae719004c2d38070f23c2).
+Pushed with explicit `HEAD:refs/heads/feat/phase-05-ml-training`; `git ls-remote` verified
+that exact remote SHA. The post-commit scan covered **128 files and 186 historical blobs**
+with no findings under the same limited detection method.
+[Implementation workflow](https://github.com/axyz97836/SentinaAI/actions/runs/39933162393)
+finished **completed / success** for that exact SHA. Downloaded Linux hosted logs confirm
+**272 database tests (28.72 s), 128 backend tests (7.30 s), 8 browser tests (7.0 s),
+all 9 ingestion checks and all 8 model integration checks**. Lint, strict typing,
+frontend build, infrastructure/outage checks and frontend audit passed. Hosted training
+reproduced every reported metric and confusion matrix exactly, including the corrected
+workload-marker/API/worker-log assertions. This verifies the approved packages on local
+Linux ARM Docker and hosted Linux x86, without changing their pinned versions.
+
+Logs were downloaded using the existing Git credential manager; credentials remained
+in process memory and were not printed or saved. No hosted implementation failure remains.
+The final report-only follow-up records this evidence; application code/tests remain identical
+to 198f425. Its exact remote hash and final workflow result are verified separately in the
+completion response, avoiding a self-referencing report commit.
 No force push, merge or deployment. Sandbox-only tool access failures were resolved through
 approved command execution; no Git authentication/synchronization error is known.
 
