@@ -1,8 +1,9 @@
 # Phase 6 verification: direct and asynchronous CSV scoring
 
-Updated: 2026-10-24. **Locally verified; GitHub publication/hosted verification pending.**
+Updated: 2026-10-25. **Phase 6 verified locally and in hosted CI; ready for owner review.**
 Branch: `feat/phase-06-scoring`.
-Base: `6b54665` (merged Phase 5, PR #5). No Phase 6 commit or push yet.
+Base: `6b54665` (merged Phase 5, PR #5).
+Implementation: `41264119d978d006112a25ced2a7f57d3a3a50a3`, published and remotely verified.
 
 ## Authority and recovery
 
@@ -171,7 +172,7 @@ Resolved findings and safeguards:
    rule definitions, nonzero placeholder contribution or SHAP attribution is invented.
 6. Redaction assertion matched a schema key; corrected as described above and rerun.
 
-**Verdict: Ship the locally verified Phase 6 scope for hosted verification and owner review.**
+**Verdict: Ship the verified Phase 6 scope for owner review.** Hosted CI passed.
 Not checked: production scale, deployment, formal security audit, calibrated real-world
 accuracy, complete configurable rules/SHAP, frontend transaction screens or case workflows.
 
@@ -214,11 +215,39 @@ Pre-stage scan examined **140 tracked/nonignored files and 187 reachable histori
 plus API/worker logs, with **no findings**. It matches known local credentials and common
 token/private-key patterns; this is not exhaustive secret detection or SAST. No env file,
 private CSV, artifact, credential, storage object or log belongs in this change set.
+The post-implementation scan covered 140 files and 212 historical blobs with no findings.
 
 Origin: https://github.com/axyz97836/SentinaAI.
 [Phase 6 branch](https://github.com/axyz97836/SentinaAI/tree/feat/phase-06-scoring).
-Implementation commit, verified remote SHA and hosted Actions URL/status will be recorded
-after publication. No force push, merge or deployment is authorized or performed.
+Implementation commit:
+[41264119d978d006112a25ced2a7f57d3a3a50a3](https://github.com/axyz97836/SentinaAI/commit/41264119d978d006112a25ced2a7f57d3a3a50a3).
+Pushed using explicit `HEAD:refs/heads/feat/phase-06-scoring`; `git ls-remote` verified the
+exact same SHA. A later fetch confirmed main still points to the approved base.
+
+[Hosted implementation workflow](https://github.com/axyz97836/SentinaAI/actions/runs/40120091103)
+finished **completed / success** for that exact commit. Downloaded Linux hosted logs confirm
+**296 database tests (42.99 s), 165 backend tests (7.21 s), 8 browser tests (6.9 s), all 9
+ingestion, 8 model and 9 scoring integration checks**. Hosted scoring reproduced the
+805/805/805/803/805 transaction/score/alert/label/audit reconciliation, including actual
+worker kill/recovery and storage failure. Lint, typing, frontend build, infrastructure,
+dependency outage/recovery and frontend dependency audit all passed.
+
+The local status monitor later ended with UND_ERR_CONNECT_TIMEOUT. A fresh public Actions
+query recovered the actual successful result; this was not a
+CI failure. Logs were downloaded through the existing Git credential manager, with secrets
+kept only in process memory. No Git authentication or synchronization failure occurred.
+Ignored downloaded logs are `.local/phase4-ci-40120091103.zip` (existing helper naming).
+
+This final report-only follow-up does not change application code or tests. Its commit,
+remote synchronization and own hosted workflow are verified separately in the completion
+response, avoiding a self-referencing commit/run ID in the report. No force push, merge or
+deployment is authorized or performed. Phase 7 requires a separate owner instruction.
+
+Community reference inspected: [Serializable vs SELECT FOR UPDATE vs advisory locks — pick the boundary, not the loudest tool](https://dev.to/chriserodriguez/serializable-vs-select-for-update-vs-advisory-locks-pick-the-boundary-not-the-loudest-tool-4b02)
+by [@chriserodriguez](https://dev.to/chriserodriguez). Its lock-ownership distinction is
+consistent with the existing dedicated job connection and explicit org-row boundary.
+One article and no returned comments are not community consensus; the executed database
+and crash tests, rather than the article, establish this implementation's evidence.
 
 ## Remaining limitations
 
