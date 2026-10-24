@@ -105,10 +105,19 @@ class BaselineBundle:
 
     def components(self, rows: list[Row]) -> tuple[FloatArray, FloatArray]:
         matrix = features(rows)
-        probabilities = np.asarray(self.supervised.predict_proba(matrix)[:, 1], dtype=np.float64)
+        output = np.asarray(self.supervised.predict_proba(matrix), dtype=np.float64)
+        if output.shape != (len(rows), 2) or not np.array_equal(self.supervised.classes_, [0, 1]):
+            raise InvalidCSV("MODEL_OUTPUT_INVALID")
+        probabilities = output[:, 1]
         scores = -np.asarray(self.anomaly.score_samples(matrix[:, : len(NUMERIC)].astype(float)))
+        if scores.shape != (len(rows),) or not np.isfinite(scores).all():
+            raise InvalidCSV("MODEL_OUTPUT_INVALID")
         percentiles = np.searchsorted(self.reference, scores, side="right") / len(self.reference)
-        if not np.isfinite(probabilities).all() or not np.isfinite(percentiles).all():
+        if (
+            not np.isfinite(output).all()
+            or not ((output >= 0) & (output <= 1)).all()
+            or not np.isfinite(percentiles).all()
+        ):
             raise InvalidCSV("MODEL_OUTPUT_INVALID")
         return probabilities, np.asarray(percentiles, dtype=np.float64)
 

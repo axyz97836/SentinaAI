@@ -96,8 +96,14 @@ def job_status(identifier: UUID, db: Database, principal: Identity) -> dict[str,
             {"row_number": error.row_number, "code": error.code, "summary": error.summary}
             for error in errors
         ],
-        "has_output": job.status == "SUCCEEDED" and job.model_version_id is not None,
-        "progress_phase": "VALIDATION"
+        "has_output": job.status == "SUCCEEDED"
+        and (
+            job.type == "MODEL_TRAIN"
+            and job.model_version_id is not None
+            or job.params_json.get("progress_phase") == "SCORING"
+            and job.processed_rows > 0
+        ),
+        "progress_phase": job.params_json.get("progress_phase", "VALIDATION")
         if job.type == "CSV_IMPORT"
         else "TRAINING"
         if job.type == "MODEL_TRAIN"

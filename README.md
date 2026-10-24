@@ -7,7 +7,7 @@ the approved eighteen-table schema, Alembic migrations and fictional demo accoun
 Phase 3 adds session authentication, CSRF protection and reusable authorization guards.
 Phase 4 adds bounded CSV uploads, private storage and durable validation jobs.
 Phase 5 adds deterministic baseline training, verified private artifacts and explicit model activation.
-Fraud scoring and investigation workflows are not implemented.
+Phase 6 adds direct transaction scoring and durable CSV scoring. Investigation workflows remain future work.
 
 The approved [implementation plan](docs/IMPLEMENTATION_PLAN.md) remains authoritative.
 All eleven planning/security documents are preserved. This project is not deployed.
@@ -263,11 +263,11 @@ requirement. Public datasets fail closed until independent owner approval exists
 
 Poll `GET /api/v1/jobs/{job_id}` for PostgreSQL-backed state, counts, up to 100 safe
 row errors and any pending rejected-object cleanup. Cross-organization IDs return
-404. `processed_rows` means valid rows examined in the reported VALIDATION phase;
+404. For TRAINING, `processed_rows` means valid rows examined in the VALIDATION phase;
 it does not mean scored transactions. Valid TRAINING files become VALIDATED and
-SUCCEEDED. Row-invalid files are rejected as a whole with their counts preserved.
-SCORING validates/stages only and ends FAILED/ACTIVE_MODEL_REQUIRED without a model
-(SCORING_NOT_AVAILABLE if one exists). No transaction, score, label or alert is created.
+SUCCEEDED; row-invalid TRAINING files are rejected as a whole with counts preserved.
+Phase 6 SCORING behavior and row-partial results are described below. Historical
+Phase 4 failed jobs remain unchanged and are never silently reprocessed.
 
 The API republishes durable unfinished jobs every 15 seconds, with per-job cooldowns.
 Celery uses late acknowledgement, advisory locks across progress commits and at most
@@ -328,6 +328,53 @@ Run `make model-check` for the real upload/train/artifact/activate workflow plus
 tampering and outage checks. It reuses the isolated ingestion test project and existing local
 credentials read-only; do not run it concurrently with `make ingestion-check`. Main volumes
 and the development organization's model state are preserved.
+
+## Phase 6 transaction scoring
+
+After an ADMIN activates a model, all three authenticated roles may send canonical
+JSON to `POST /api/v1/transactions`, with the session cookie, allowed Origin and
+`X-CSRF-Token`. Required fields match the CSV columns above, except `fraud_label` is
+forbidden in JSON. `device_ref` is optional; amount accepts a positive decimal string
+or JSON number with at most two decimal places. UTC timestamps require `Z` or `+00:00`.
+Unknown fields, including client-supplied scores, models and organization IDs, are rejected.
+
+A new transaction returns 201 with transaction/result/model IDs, risk score, band and
+optional alert ID. Identical normalized replay returns that original result with 200;
+different canonical data under the same organization/external ID returns
+409 `DUPLICATE_TRANSACTION_CONFLICT`. A new score without an active model returns
+409 `ACTIVE_MODEL_REQUIRED`. Artifact failures roll back all new scoring writes.
+
+`GET /api/v1/transactions` supports `limit` (1–100), returned `cursor`, bounded reference
+`search`, `band` (also `risk_band`), and timezone-aware `date_from` inclusive / `date_to`
+exclusive. Order is event time descending, UUID ascending. Detail at
+`GET /api/v1/transactions/{id}` returns persisted components, model ID, threshold snapshot,
+PARTIAL explanation, measured scoring latency and related alert/case IDs. Foreign IDs return 404.
+
+The composite uses immutable model weights (default 0.60 supervised, 0.25 anomaly,
+0.15 rules). Components are rounded to six decimal places, then the weighted 0–100 score
+is rounded to an integer, both with decimal half-even rounding. Risk bands and alert
+thresholds come from organization settings and are frozen on each result. Composite
+risk and anomaly percentile are **not fraud probabilities**; the synthetic classifier's
+output is not established as calibrated. Detailed attribution is reserved for Phase 7.
+
+The seed creates no rules: they stay explicitly NOT_CONFIGURED with zero contribution,
+without weight redistribution. Minimal supported rule evaluation uses strictly prior
+same-organization/customer transactions; no future or equal-time candidate records.
+The [Phase 6 report](verification/phase-6.md) documents supported parameter shapes,
+bounded historical queries, missing-history states and the provisional binary rule signal.
+
+SCORING CSV jobs pin the verified active model at their first processing attempt,
+including across retries. Each row uses the same service as direct submission. Result,
+alert, audit and progress commit atomically; matching rows count as successful replays
+without new records. Labels stay separate, with immutable provenance. Partial row failures
+finish SUCCEEDED with nonzero `failed_rows`, bounded safe errors and “Completed with row
+errors.” `processed_rows` counts successful row submissions, not distinct new transactions.
+Unprocessed rows never count as successful. Model/storage failures retain truthful job state.
+
+Run `make scoring-check` for isolated real upload/train/activate/direct/CSV scoring,
+concurrent HTTP replay, worker SIGKILL, storage recovery, isolation and DB reconciliation.
+It shares the disposable project used by `make ingestion-check` and `make model-check`;
+run those three sequentially. Main credentials, volumes and model state are preserved.
 
 ## Optional native backend development
 

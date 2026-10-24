@@ -138,7 +138,9 @@ def row_error(row: dict[str, str]) -> str | None:
     return None
 
 
-def validate_csv(file: BinaryIO, *, headers_only: bool = False) -> Iterator[tuple[int, str | None]]:
+def csv_rows(
+    file: BinaryIO, *, headers_only: bool = False
+) -> Iterator[tuple[int, dict[str, str] | None, str | None]]:
     """Yield one outcome per data record; memory is bounded by the row/field caps."""
     file.seek(0)
     stream = TextIOWrapper(file, encoding="utf-8-sig", errors="strict", newline="")
@@ -147,21 +149,16 @@ def validate_csv(file: BinaryIO, *, headers_only: bool = False) -> Iterator[tupl
         names = header(reader)
         if headers_only:
             return
-        seen: set[str] = set()
         count = 0
         for count, values in enumerate(reader, 1):
             if count > MAX_ROWS:
                 raise InvalidCSV("ROW_LIMIT_EXCEEDED")
             if len(values) != len(names):
-                yield count, "INVALID_RECORD"
+                yield count, None, "INVALID_RECORD"
                 continue
             row = dict(zip(names, values, strict=True))
             error = row_error(row)
-            if error is None:
-                if row["external_id"] in seen:
-                    error = "DUPLICATE_EXTERNAL_ID"
-                seen.add(row["external_id"])
-            yield count, error
+            yield count, row if error is None else None, error
         if count == 0:
             raise InvalidCSV("EMPTY_DATASET")
     except UnicodeError:
@@ -171,3 +168,14 @@ def validate_csv(file: BinaryIO, *, headers_only: bool = False) -> Iterator[tupl
     finally:
         stream.detach()
         file.seek(0)
+
+
+def validate_csv(file: BinaryIO, *, headers_only: bool = False) -> Iterator[tuple[int, str | None]]:
+    """TRAINING keeps its unique-row contract; SCORING resolves duplicates against the DB."""
+    seen: set[str] = set()
+    for number, row, error in csv_rows(file, headers_only=headers_only):
+        if row is not None:
+            if row["external_id"] in seen:
+                error = "DUPLICATE_EXTERNAL_ID"
+            seen.add(row["external_id"])
+        yield number, error

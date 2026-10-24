@@ -149,7 +149,8 @@ def test_durable_validation_and_duplicate_delivery(ingestion, purpose, status, c
     with sessions() as db:
         job, dataset = db.get(Job, job_id), db.get(Dataset, dataset_id)
         assert (job.status, job.error_code) == (status, code)
-        assert job.total_rows == job.processed_rows == 1 and job.failed_rows == 0
+        assert job.total_rows == 1 and job.failed_rows == 0
+        assert job.processed_rows == (1 if purpose == "TRAINING" else 0)
         assert job.attempt_count == 1 and job.started_at and job.completed_at
         assert dataset.status == "VALIDATED" and dataset.row_count == 1
         assert (
@@ -576,7 +577,7 @@ def test_multipart_upload_role_matrix(ingestion, client, role, purpose):
     process_job(engine, storage, job_id, dataset_id)
     status = browser.get(f"/api/v1/jobs/{job_id}").json()
     assert status["status"] == ("SUCCEEDED" if purpose == "TRAINING" else "FAILED")
-    assert status["processed_rows"] == 1
+    assert status["processed_rows"] == (1 if purpose == "TRAINING" else 0)
 
 
 @pytest.mark.parametrize("failure", ["anonymous", "csrf", "origin", "cross-site"])

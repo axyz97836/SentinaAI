@@ -23,6 +23,7 @@ from app.ingestion.storage import PrivateStorage
 from app.ml.processing import reconcile_training
 from app.ml.routes import router as models_router
 from app.observability import configure_logging
+from app.scoring.routes import router as scoring_router
 
 logger = configure_logging()
 
@@ -102,6 +103,7 @@ def create_app(
     app.include_router(auth_router)
     app.include_router(ingestion_router)
     app.include_router(models_router)
+    app.include_router(scoring_router)
 
     @app.middleware("http")
     async def request_context(
