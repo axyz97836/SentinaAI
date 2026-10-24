@@ -22,7 +22,7 @@ let csrf;
 let passed = 0;
 let ownsStack = false;
 const started = new Date().toISOString();
-const marker = process.argv.includes("--models") ? "fictional-c-" : "phase4-e2e-fictional-marker";
+const marker = process.argv.includes("--models") || process.argv.includes("--scoring") ? "fictional-c-" : "phase4-e2e-fictional-marker";
 const header = "external_id,customer_ref,occurred_at,amount,currency,merchant_category,country_code,channel";
 const row = `${marker},fictional-customer,2026-10-20T10:00:00Z,12.34,INR,grocery,IN,WEB`;
 const csv = `${header}\n${row}\n`;
@@ -161,7 +161,10 @@ try {
   await prepareIsolatedStack();
   await ready();
   await loginAs(email);
-  if (process.argv.includes("--models")) {
+  if (process.argv.includes("--scoring")) {
+    const { verifyScoring } = await import("./check-scoring.mjs");
+    await verifyScoring({ compose, request, terminal, poll, ready, pass, loginAs, startWorkerOnly, marker, upload, inspect });
+  } else if (process.argv.includes("--models")) {
     const { verifyModels } = await import("./check-models.mjs");
     await verifyModels({ compose, request, terminal, poll, ready, pass, loginAs, startWorkerOnly, marker });
   } else {
@@ -260,4 +263,4 @@ try {
   // This fixed project owns only isolated test volumes, never the main development volumes.
   if (ownsStack) await compose("down", "--volumes", "--remove-orphans");
 }
-console.log(`${passed} ${process.argv.includes("--models") ? "model" : "ingestion"} integration checks passed; isolated resources removed.`);
+console.log(`${passed} ${process.argv.includes("--scoring") ? "scoring" : process.argv.includes("--models") ? "model" : "ingestion"} integration checks passed; isolated resources removed.`);

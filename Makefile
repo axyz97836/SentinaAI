@@ -42,6 +42,10 @@ ingestion-check:
 model-check:
 	node infra/scripts/check-ingestion.mjs --models
 
+.PHONY: scoring-check
+scoring-check:
+	node infra/scripts/check-ingestion.mjs --scoring
+
 frontend-check:
 	$(COMPOSE) build frontend
 	$(COMPOSE) run --rm --no-deps frontend npm run check
@@ -61,4 +65,4 @@ seed: migrate
 database-check:
 	node infra/scripts/check-database.mjs
 
-check: backend-check frontend-check database-check infra-check outage-check ingestion-check model-check browser-check
+check: backend-check frontend-check database-check infra-check outage-check ingestion-check model-check scoring-check browser-check

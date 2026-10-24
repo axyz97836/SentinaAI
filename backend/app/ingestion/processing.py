@@ -7,11 +7,13 @@ from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from app.auth.errors import AuthError
 from app.ingestion.service import finish
 from app.ingestion.storage import PrivateStorage, StorageUnavailable
 from app.ingestion.validation import MAX_ERRORS, InvalidCSV, validate_csv
 from app.jobs import job_session
-from app.models import Dataset, Job, JobError, ModelVersion
+from app.models import Dataset, Job, JobError
+from app.scoring.processing import score_job
 
 
 def progress(db: Session, job: Job, rows: list[tuple[int, str | None]]) -> None:
@@ -62,16 +64,7 @@ def validate_job(db: Session, job: Job, dataset: Dataset, storage: PrivateStorag
             finish(job, "ROW_VALIDATION_FAILED")
         else:
             dataset.status = "VALIDATED"
-            if dataset.purpose == "TRAINING":
-                finish(job)
-            else:
-                active = db.scalar(
-                    select(ModelVersion.id).where(
-                        ModelVersion.organization_id == job.organization_id,
-                        ModelVersion.is_active.is_(True),
-                    )
-                )
-                finish(job, "ACTIVE_MODEL_REQUIRED" if active is None else "SCORING_NOT_AVAILABLE")
+            finish(job)
 
 
 def process_job(engine: Engine, storage: PrivateStorage, job_id: UUID, dataset_id: UUID) -> bool:
@@ -113,7 +106,13 @@ def process_job(engine: Engine, storage: PrivateStorage, job_id: UUID, dataset_i
             job.started_at = job.started_at or datetime.now(UTC)
             job.error_code = job.error_message = None
         try:
-            validate_job(db, job, dataset, storage)
+            if dataset.purpose == "SCORING":
+                score_job(db, job, dataset, storage)
+            else:
+                validate_job(db, job, dataset, storage)
+        except AuthError as exc:
+            with db.begin():
+                finish(job, exc.code)
         except InvalidCSV as exc:
             with db.begin():
                 dataset.status = "REJECTED"

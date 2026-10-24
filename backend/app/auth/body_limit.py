@@ -11,7 +11,7 @@ class AuthBodyLimitMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or not scope["path"].startswith(
-            ("/api/v1/auth/", "/api/v1/admin/models")
+            ("/api/v1/auth/", "/api/v1/admin/models", "/api/v1/transactions")
         ):
             await self.app(scope, receive, send)
             return

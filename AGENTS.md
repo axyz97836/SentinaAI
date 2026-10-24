@@ -119,14 +119,11 @@ remote refs verified and any authentication/synchronization errors in the final 
 
 ## Current development boundary
 
-Phases 1, 2 and 3 have been completed, verified
-and merged into main.
-
-Each phase requires explicit owner authorization. Historical completion notes
-are not authorization to restart work or advance to another phase.
-Phase 4 (secure CSV ingestion, private storage and durable jobs) is explicitly
-authorized on `feat/phase-04-ingestion`, based on current merged `origin/main`.
-Stop after verified commits, push and report; merging and Phase 5 need separate approval.
+The latest explicit owner phase instruction defines the authorized phase and branch.
+Verify the preceding phase's merge in `origin/main` before starting a new phase.
+Historical completion notes do not authorize restarting work or advancing a phase.
+Stop after verified commits, push and report; merging, deployment and the next phase
+each need separate explicit owner approval.
 
 Before starting a new phase:
 1. Confirm the previous phase is merged into main.
