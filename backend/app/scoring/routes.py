@@ -10,10 +10,16 @@ from app.auth.errors import AuthError
 from app.ingestion.storage import StorageUnavailable
 from app.ingestion.validation import InvalidCSV
 from app.models import Alert, Case, RuleHit, ScoringResult, Transaction
+from app.scoring.explanations import explanation
 from app.scoring.schema import TransactionInput
 from app.scoring.service import score_transaction
 
 router = APIRouter(prefix="/api/v1/transactions")
+
+
+@router.get("/{identifier}/explanation")
+def explain(identifier: UUID, db: Database, principal: Identity) -> dict[str, object]:
+    return explanation(db, principal, identifier)
 
 
 @router.post("", status_code=201)

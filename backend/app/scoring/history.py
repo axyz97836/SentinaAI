@@ -5,10 +5,11 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import RuleDefinition, Transaction
+from app.scoring.rules import validate_parameters
 from app.scoring.schema import TransactionInput
 
 CODES = ("AMOUNT_OUTLIER", "HIGH_VELOCITY", "DEVICE_CHANGE")
@@ -43,20 +44,15 @@ def evaluate(
         if not rule.enabled:
             item["status"] = "DISABLED"
             continue
-        params = rule.parameters_json
         item["status"] = "UNSUPPORTED_PARAMETERS"
+        try:
+            params = validate_parameters(code, rule.parameters_json)
+        except ValueError:
+            continue
+        item["parameters"] = params
         hit: bool
         if code == "AMOUNT_OUTLIER":
-            multiplier, minimum = params.get("multiplier"), params.get("min_history")
-            if (
-                set(params) != {"multiplier", "min_history"}
-                or not isinstance(multiplier, (int, float))
-                or isinstance(multiplier, bool)
-                or not 1 < multiplier <= 100
-                or type(minimum) is not int
-                or not 1 <= minimum <= 100
-            ):
-                continue
+            multiplier, minimum = params["multiplier"], params["min_history"]
             # Bounded recent same-currency history; nominal amounts are never FX converted.
             history = list(
                 db.scalars(
@@ -72,30 +68,37 @@ def evaluate(
             average = sum((row.amount for row in history), Decimal(0)) / len(history)
             ratio = Decimal(str(payload.amount)) / average
             item["amount_ratio"] = str(ratio.quantize(Decimal("0.000001")))
+            item.update(
+                observed_amount=str(payload.amount),
+                currency=payload.currency,
+                historical_mean=str(average),
+                threshold_amount=str(average * Decimal(str(multiplier))),
+            )
             hit = ratio > Decimal(str(multiplier))
         elif code == "HIGH_VELOCITY":
-            threshold = params.get("count_threshold")
-            if (
-                set(params) != {"window_minutes", "count_threshold"}
-                or type(params.get("window_minutes")) is not int
-                or params["window_minutes"] != 10
-                or type(threshold) is not int
-                or not 1 <= threshold <= 1000
-            ):
-                continue
-            # Saturation is explicit: only enough rows to decide the threshold are fetched.
-            ids = list(
-                db.scalars(
-                    prior.with_only_columns(Transaction.id)
-                    .where(Transaction.occurred_at >= stamp - timedelta(minutes=10))
-                    .limit(threshold)
+            threshold = params["count_threshold"]
+            try:
+                window_start = stamp - timedelta(minutes=10)
+            except OverflowError:
+                window_start = datetime.min.replace(tzinfo=stamp.tzinfo)
+            # Indexed ten-minute range, one aggregate scalar; no unbounded row materialization.
+            count = (
+                db.scalar(
+                    prior.with_only_columns(func.count(Transaction.id)).where(
+                        Transaction.occurred_at >= window_start
+                    )
                 )
+                or 0
             )
-            item.update(parameters=params, prior_count=len(ids), count_capped_at=threshold)
-            if not ids and db.scalar(prior.with_only_columns(Transaction.id).limit(1)) is None:
+            item.update(
+                prior_count=count,
+                window_start=window_start.isoformat(),
+                window_end=stamp.isoformat(),
+            )
+            if not count and db.scalar(prior.with_only_columns(Transaction.id).limit(1)) is None:
                 item["status"] = "MISSING_HISTORY"
                 continue
-            hit = len(ids) >= threshold
+            hit = count >= threshold
         else:
             if params:
                 continue
@@ -109,6 +112,17 @@ def evaluate(
             hit = previous.device_ref != payload.device_ref
             item["device_changed"] = hit
         item["status"] = "HIT" if hit else "NOT_HIT"
+        item["reason"] = {
+            "AMOUNT_OUTLIER": "Amount exceeds the configured historical multiplier."
+            if hit
+            else "Amount does not exceed the configured historical multiplier.",
+            "HIGH_VELOCITY": "Prior transaction count meets the configured threshold."
+            if hit
+            else "Prior transaction count is below the configured threshold.",
+            "DEVICE_CHANGE": "Device differs from the preceding eligible transaction."
+            if hit
+            else "Device matches the preceding eligible transaction.",
+        }[code]
     # Contract leaves aggregation open: any actual binary hit is 1; otherwise 0.
     # Missing/disabled rules stay explicit; the model's component weights never change.
     return Decimal(int(any(item["status"] == "HIT" for item in evidence))), evidence
