@@ -1,8 +1,9 @@
 # Phase 7 verification: rules, explanations and risk configuration
 
-Updated: 2026-10-28. **Final implementation, approved dependency remediation, local regression
-and Ponytail Review pass. Phase 7 awaits publication and final hosted ARM64 CI verification.
-The earlier hosted checkpoint does not cover these uncommitted changes.**
+Updated: 2026-10-28. **Phase 7 implementation and verification are complete: approved dependency
+remediation, exact ARM64 compatibility, genuine SHAP, local regression, Ponytail Review and
+hosted ARM64 CI pass. Implementation 484dae2 is published and its remote hash is verified.
+This final report update changes evidence only; no merge, deployment or Phase 8 is authorized.**
 Branch: `feat/phase-07-explainability`; base `f57eeae` (Phase 6 merge, PR #6).
 
 ## Authorization and preservation
@@ -657,7 +658,7 @@ missing background/constructor/generation failures, replay, old evidence, concur
 requests, unsupported runtime, org denial and atomic rollback. Configuration concurrency,
 optimistic versions and atomic audit remain covered. No material finding remains open.
 
-Verdict: Ship after publication checks. Not checked: production throughput, external penetration
+Verdict: Ship. Not checked: production throughput, external penetration
 testing or predictive calibration; this review does not claim them. The bounded demo lock and
 per-request trusted-background loading remain documented limitations, not production scale
 claims. SHAP's interventional independence assumption (including one-hot features) remains
@@ -683,5 +684,51 @@ No schema, protected planning/security document, scoring formula, weight, thresh
 fixture, credential, private dataset or historical model file is changed. The secret scan
 checked 152 tracked/nonignored working files, 229 reachable historical blobs and API/worker
 logs with no findings. Its scope is known local secret values and common key/token patterns,
-not exhaustive SAST. Staged scope/whitespace and remote ancestry must also pass before commit.
-Current remote checkpoint remains e194ba1 and main f57eeae; no merge/deployment is authorized.
+not exhaustive SAST. Staged scope/whitespace and remote ancestry passed before commit.
+The pre-publication checkpoint was e194ba1; main remains f57eeae. No merge/deployment is authorized.
+
+## Final implementation publication
+
+Implementation commit:
+[484dae20450f04404d37d4d65e30b7940028f492](https://github.com/axyz97836/SentinaAI/commit/484dae20450f04404d37d4d65e30b7940028f492)
+(`feat(explainability): persist verified SHAP attribution on ARM64`). Staged file-list/diff and
+whitespace checks passed. Explicit push to `HEAD:refs/heads/feat/phase-07-explainability`
+succeeded; `git ls-remote` returned the exact same SHA. No authentication or ancestry error.
+The tree was clean immediately after this implementation checkpoint. e194ba1 remains its
+parent; main remains f57eeae. No private artifacts, CSVs, `.local` evidence or credentials are
+tracked. The post-commit secret scan covered 152 working files and 251 historical blobs plus
+API/worker logs, with no findings under the previously stated scan limits.
+
+Direct installed-image inspection additionally confirms filelock 4.2.1 and setuptools 84.1.0
+in the development test image and **neither package installed in the operational API image**.
+This verifies development-only placement beyond the manifest comparison.
+
+[Hosted ARM64 workflow 40591638766](https://github.com/axyz97836/SentinaAI/actions/runs/40591638766)
+completed **success** against that exact implementation commit. Its logs were downloaded
+through the existing credential manager into ignored local storage; no token was exposed.
+
+| Hosted check | Actual completed result |
+|---|---|
+| Runtime/build/configuration | Approved ARM64 runtime checks, stack builds and credential metadata validation PASS |
+| Database | **322 passed**, one existing warning, 60.97 s |
+| Backend | Ruff/format PASS; mypy **47 modules** PASS; **217 passed**, 322 deselected, four existing warnings, 8.09 s |
+| Frontend/infrastructure/outages | Build/lint/types, restricted service checks and controlled recovery PASS |
+| Ingestion / model / scoring / explanation integration | **9 / 8 / 9 / 7 passed**, each disposable stack removed |
+| Browser | **8 passed**, 5.8 s |
+| Frontend dependency audit | **0 vulnerabilities** |
+| Workflow cleanup and final status | Completed / **success** |
+
+Hosted distinct application count is **547 passed, 0 failed**; archive aggregate and per-step
+logs repeat some lines and are not counted twice. The complete Python dependency audit and
+frozen private 2,000-row compatibility fixture were verified locally, as documented above;
+they are not falsely attributed to the hosted workflow. The hosted workflow independently
+exercised genuine SHAP and the same authoritative runtime against its isolated synthetic data.
+
+There are no remaining Phase 7 implementation or verification blockers. Remaining limitations
+are intentional and explicit: no default rule definitions in the preserved seed, honest
+PARTIAL evidence for unavailable rules/history/attribution, classifier log-odds attribution
+only, interventional independence assumptions, synthetic metrics without calibration claims,
+native macOS numerical non-equivalence, and demo-scale serialized org scoring. No historical
+data/model rewrite, protected document edit, scoring behavior waiver or unrelated dependency
+upgrade was used. The final owner handoff records the report-only commit, its verified remote
+hash and its hosted workflow result separately from the implementation evidence above.
