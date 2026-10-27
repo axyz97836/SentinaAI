@@ -42,6 +42,11 @@ ingestion-check:
 model-check:
 	node infra/scripts/check-ingestion.mjs --models
 
+.PHONY: model-runtime-check
+model-runtime-check:
+	$(COMPOSE) exec -T api python -m app.ml.runtime
+	$(COMPOSE) exec -T worker python -m app.ml.runtime
+
 .PHONY: scoring-check
 scoring-check:
 	node infra/scripts/check-ingestion.mjs --scoring
@@ -69,4 +74,4 @@ seed: migrate
 database-check:
 	node infra/scripts/check-database.mjs
 
-check: backend-check frontend-check database-check infra-check outage-check ingestion-check model-check scoring-check explanation-check browser-check
+check: model-runtime-check backend-check frontend-check database-check infra-check outage-check ingestion-check model-check scoring-check explanation-check browser-check

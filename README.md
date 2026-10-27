@@ -8,6 +8,7 @@ Phase 3 adds session authentication, CSRF protection and reusable authorization 
 Phase 4 adds bounded CSV uploads, private storage and durable validation jobs.
 Phase 5 adds deterministic baseline training, verified private artifacts and explicit model activation.
 Phase 6 adds direct transaction scoring and durable CSV scoring. Investigation workflows remain future work.
+Phase 7 adds versioned risk configuration, factual rule evidence and supervised SHAP explanations.
 
 The approved [implementation plan](docs/IMPLEMENTATION_PLAN.md) remains authoritative.
 All eleven planning/security documents are preserved. This project is not deployed.
@@ -348,14 +349,14 @@ different canonical data under the same organization/external ID returns
 `search`, `band` (also `risk_band`), and timezone-aware `date_from` inclusive / `date_to`
 exclusive. Order is event time descending, UUID ascending. Detail at
 `GET /api/v1/transactions/{id}` returns persisted components, model ID, threshold snapshot,
-PARTIAL explanation, measured scoring latency and related alert/case IDs. Foreign IDs return 404.
+COMPLETE/PARTIAL explanation, measured scoring latency and related alert/case IDs. Foreign IDs return 404.
 
 The composite uses immutable model weights (default 0.60 supervised, 0.25 anomaly,
 0.15 rules). Components are rounded to six decimal places, then the weighted 0–100 score
 is rounded to an integer, both with decimal half-even rounding. Risk bands and alert
 thresholds come from organization settings and are frozen on each result. Composite
 risk and anomaly percentile are **not fraud probabilities**; the synthetic classifier's
-output is not established as calibrated. Detailed attribution is reserved for Phase 7.
+output is not established as calibrated. Phase 7 attribution is described below.
 
 The seed creates no rules: they stay explicitly NOT_CONFIGURED with zero contribution,
 without weight redistribution. Minimal supported rule evaluation uses strictly prior
@@ -376,6 +377,56 @@ concurrent HTTP replay, worker SIGKILL, storage recovery, isolation and DB recon
 It shares the disposable project used by `make ingestion-check` and `make model-check`;
 run those three sequentially. Main credentials, volumes and model state are preserved.
 
+## Phase 7 rules, explanations and runtime contract
+
+Operational model training/scoring and numerical golden checks use **Linux ARM64 Docker**:
+the pinned Python 3.12.15 Bookworm base, glibc 2.36 and the exact hash-locked ML versions.
+API, worker, migration and backend test services explicitly select `linux/arm64`; hosted CI
+uses an ARM64 runner. `make model-runtime-check` verifies the API and worker fingerprints.
+Operational model loading/training refuses unsupported runtimes with `MODEL_RUNTIME_UNSUPPORTED`.
+An environment check includes the known power-function boundary; it does not round or modify
+anomaly scores. The pinned base/locks and actual compatibility tests establish the supported
+recipe; the runtime check is not cryptographic container attestation.
+
+Native macOS remains useful for development, but is not authoritative for scoring. A frozen
+Linux artifact has a documented one-ULP native power difference that changes one empirical
+percentile. The scoring algorithm, exact ranking and original reference remain unchanged.
+The [Phase 7 report](verification/phase-7.md) records the controlled comparison and runtime identity.
+The local comparison image ID is not a portable published registry dependency; rebuild from
+the committed pinned Dockerfile and hash locks rather than attempting to pull that local tag.
+
+`GET /api/v1/transactions/{id}/explanation` returns persisted components, weights, rule states/hits,
+threshold snapshot and supervised attribution. It never recalculates an old score. Newly scored
+transactions use SHAP LinearExplainer in log-odds units, based on the exact transformed mean of
+the verified training fold. At most five signed features are displayed with base value and the
+sum of omitted contributions. These explain only the classifier, not the composite score or
+causation; interventional feature independence is assumed, including one-hot features.
+
+COMPLETE requires valid supervised attribution and all three rules to have a known evaluated
+or disabled state. Missing rules/history, unsupported parameters or unavailable attribution
+produce PARTIAL with explicit evidence. Missing training-reference objects or explainer failure
+cannot fabricate feature values or change an otherwise valid score. Mandatory artifact validation
+still fails scoring. Historical Phase 6 explanations remain PARTIAL and unchanged.
+
+ADMIN-only `GET/PATCH /api/v1/admin/settings` and `PATCH /api/v1/admin/rules/{id}` use the existing
+session/Origin/CSRF protections. Settings PATCH supplies all four thresholds and expected `version`;
+rule PATCH supplies `version` and `enabled` and/or `parameters_json`. Stale versions return 409.
+Updates and sanitized audit commit together under the same org lock used by scoring. No-op edits
+retain their version. Earlier scores, alerts and explanation snapshots remain unchanged.
+
+Supported parameter shapes preserve the Phase 6 decisions:
+
+- AMOUNT_OUTLIER: `{multiplier,min_history}`, multiplier >1 and <=100; min_history 1–100;
+  reference is at most 100 latest prior same-customer, same-currency amounts.
+- HIGH_VELOCITY: `{window_minutes:10,count_threshold}`, threshold 1–1000; exact count in the
+  inclusive-lower/exclusive-upper ten-minute window, excluding equal/current/future events.
+- DEVICE_CHANGE: `{}`, comparing the immediately preceding eligible reference when both devices exist.
+
+The seed still creates no rules, and no public creation route is added. Use only approved isolated
+fixtures for verification. `make explanation-check` exercises real SHAP, rule hits, ADMIN edits,
+historical replay, CSV scoring and isolation. Run it sequentially with the ingestion/model/scoring
+checks because those share one guarded disposable project. No frontend settings screen is included.
+
 ## Optional native backend development
 
 The supported baseline is Python 3.12; no system packages are installed by setup.
@@ -387,11 +438,13 @@ cd backend
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
 .venv/bin/mypy app
-.venv/bin/pytest
+.venv/bin/pytest tests/test_rule_parameters.py tests/test_csv_validation.py
 ```
 
-Native unit tests use isolated fixtures and need no service credentials. The
-recommended way to run the API is Compose because DB/Redis/S3 have no host ports.
+These native checks validate input rules only. Run the complete backend, numerical and database
+suites through Make/Compose in the authoritative ARM64 environment; they are not silently
+skipped or treated as native numerical passes. Run the API through Compose because DB/Redis/S3
+have no host ports and operational inference requires the verified runtime.
 The API and worker share runtime code and dependencies. SQLAlchemy models, Alembic
 migrations and the local seed command live in the backend. The database bootstrap
 only creates an unprivileged app login with CONNECT and schema USAGE, not CREATE or

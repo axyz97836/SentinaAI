@@ -391,7 +391,8 @@ def test_prior_only_history_missing_context_and_actual_hits(scoring, migrated_en
     result, _ = submit(scoring, {**PAYLOAD, "device_ref": "device-new"})
     with sessions() as db:
         score = db.get(ScoringResult, result["scoring_result_id"])
-        assert score.rule_signal == 1 and score.explanation_status == "PARTIAL"
+        assert score.rule_signal == 1 and score.explanation_status == "COMPLETE"
+        assert score.explanation_json["supervised_attribution"]["available"]
         hits = list(db.scalars(select(RuleHit).where(RuleHit.scoring_result_id == score.id)))
         assert len(hits) == 3 and all(hit.strength == 1 for hit in hits)
         assert all("'old'" not in str(hit.details_json) for hit in hits)

@@ -1,6 +1,7 @@
 # Opt-in tooling overlay. Main service configuration and volumes remain unchanged.
 services:
   migration:
+    platform: linux/arm64
     profiles: [database]
     build:
       context: ..

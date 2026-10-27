@@ -14,6 +14,7 @@ from app.ingestion.validation import InvalidCSV
 from app.jobs import job_session
 from app.ml import artifacts
 from app.ml.data import load_rows
+from app.ml.runtime import require_authoritative_runtime
 from app.ml.service import provenance
 from app.ml.training import WEIGHTS, train
 from app.models import AuditLog, Dataset, Job, ModelVersion
@@ -61,6 +62,7 @@ def process_training(
             job.started_at = job.started_at or datetime.now(UTC)
             job.error_code = job.error_message = None
         try:
+            require_authoritative_runtime()
             rows = load_rows(dataset, job.organization_id, storage)
             bundle = train(rows, provenance(job, dataset, candidate))
             content = artifacts.pack(bundle)

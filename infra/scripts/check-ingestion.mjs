@@ -127,6 +127,7 @@ async function prepareIsolatedStack() {
   assert.ok(migrationPassword, "Existing migration identity required");
   config.services.migration = {
     build: config.services.api.build,
+    platform: config.services.api.platform,
     environment: { APP_ENV: "local", DB_HOST: "postgres", POSTGRES_DB: "sentinelai_ingestion_test",
       MIGRATION_DB_USER: "sentinel_migrator", MIGRATION_DB_PASSWORD: migrationPassword,
       APP_DB_USER: config.services.api.environment.APP_DB_USER },

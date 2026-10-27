@@ -32,9 +32,17 @@ export async function verifyExplanations({ compose, request, terminal, pass, log
   assert.equal(Number(explanation.rule_evaluations.find(r=>r.code==="AMOUNT_OUTLIER").historical_mean),10);
   const sum=Object.values(explanation.component_contributions).reduce((value,c)=>value+Number(c.risk_points),0);
   assert.ok(Math.abs(sum-explanation.risk_score)<=0.5);
-  assert.equal(explanation.supervised_attribution.available,false);
-  assert.equal(explanation.supervised_attribution.reason,"NOT_RECORDED_AT_SCORING_TIME");
-  pass("stored explanation exposes genuine rule hits, exact observations and reproducible component score");
+  const attribution=explanation.supervised_attribution;
+  assert.equal(explanation.explanation_status,"COMPLETE");
+  assert.equal(attribution.available,true);
+  assert.equal(attribution.method,"SHAP_LINEAR_INTERVENTIONAL");
+  assert.equal(attribution.library_version,"0.54.1");
+  assert.equal(attribution.units,"log_odds");
+  assert.ok(attribution.top_features.length>0 && attribution.top_features.length<=5);
+  assert.ok(Math.abs(attribution.base_value+attribution.remaining_features_contribution+
+    attribution.top_features.reduce((sum,feature)=>sum+feature.contribution,0)-attribution.model_output)<1e-10);
+  assert.ok(Math.abs(1/(1+Math.exp(-attribution.model_output))-Number(explanation.supervised_probability))<=0.0000005);
+  pass("genuine stored SHAP log-odds attribution reconciles with classifier output; exact rule evidence produces COMPLETE status");
   const settings=await (await request("/admin/settings")).json();
   const updatedSettings={medium_threshold:20,high_threshold:50,critical_threshold:80,alert_threshold:0,version:settings.version};
   assert.equal((await patch("/admin/settings",updatedSettings)).status,200);
@@ -50,6 +58,7 @@ export async function verifyExplanations({ compose, request, terminal, pass, log
   const after=await (await request(`/transactions/${next.transaction_id}/explanation`)).json();
   assert.equal(after.settings_snapshot.version,2);
   assert.equal(Number(after.rule_signal),0);
+  assert.equal(after.explanation_status,"COMPLETE");
   assert.ok(next.alert_id);
   assert.ok(after.rule_evaluations.every(r=>r.status==="DISABLED"));
   pass("versioned ADMIN edits affect new scores; replay and historical explanations remain unchanged");
@@ -71,6 +80,8 @@ export async function verifyExplanations({ compose, request, terminal, pass, log
   const csvExplanation=await (await request(`/transactions/${listed.items[0].id}/explanation`)).json();
   assert.equal(csvExplanation.settings_snapshot.version,2);
   assert.equal(Number(csvExplanation.rule_signal),0);
+  assert.equal(csvExplanation.supervised_attribution.available,true);
+  assert.equal(csvExplanation.explanation_status,"COMPLETE");
   pass("real SCORING CSV shares updated settings and persisted explanation evidence");
   await fixtures("isolation");
   await loginAs("analyst@sentinel-demo.invalid");

@@ -289,7 +289,19 @@ def test_configuration_changes_affect_new_scores_only(scoring, client):
 @pytest.mark.parametrize("role", ["ANALYST", "RISK_MANAGER", "ADMIN"])
 def test_explanation_reads_original_evidence_without_storage(scoring, client, role):
     _, sessions, storage, principal, _ = scoring
-    result, _ = submit(scoring)
+
+    # Emulate a Phase 6 insertion shape; no already-persisted evidence is rewritten.
+    def legacy_insert(mapper, connection, score):
+        score.explanation_json = {
+            k: v for k, v in score.explanation_json.items() if k != "supervised_attribution"
+        }
+        score.explanation_status = "PARTIAL"
+
+    event.listen(ScoringResult, "before_insert", legacy_insert)
+    try:
+        result, _ = submit(scoring)
+    finally:
+        event.remove(ScoringResult, "before_insert", legacy_insert)
     browser, headers = client
     with sessions.begin() as db:
         db.get(Membership, principal.membership_id).role = role
