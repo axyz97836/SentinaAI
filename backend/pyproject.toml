@@ -33,5 +33,5 @@ plugins = ["pydantic.mypy"]
 files = ["app"]
 
 [[tool.mypy.overrides]]
-module = ["celery", "celery.*", "sklearn", "sklearn.*", "threadpoolctl"]
+module = ["celery", "celery.*", "sklearn", "sklearn.*", "threadpoolctl", "shap", "shap.*"]
 ignore_missing_imports = true

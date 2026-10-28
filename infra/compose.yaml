@@ -107,6 +107,7 @@ services:
     restart: unless-stopped
 
   api:
+    platform: linux/arm64
     build:
       context: ..
       dockerfile: backend/Dockerfile
@@ -136,6 +137,7 @@ services:
     restart: unless-stopped
 
   worker:
+    platform: linux/arm64
     build:
       context: ..
       dockerfile: backend/Dockerfile
@@ -177,6 +179,7 @@ services:
     restart: unless-stopped
 
   backend-checks:
+    platform: linux/arm64
     profiles: [checks]
     build:
       context: ..

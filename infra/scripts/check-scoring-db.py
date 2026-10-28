@@ -17,6 +17,7 @@ from app.models import (
     ModelVersion,
     Organization,
     RiskSettings,
+    RuleDefinition,
     ScoringResult,
     Transaction,
     TransactionLabel,
@@ -33,7 +34,27 @@ try:
         assert db.scalar(text("SELECT current_database()")) == "sentinelai_ingestion_test"
         org = db.scalars(select(Organization).where(Organization.name == ORGANIZATION_NAME)).one()
         mode = sys.argv[1]
-        if mode == "threshold":
+        if mode == "rules":
+            assert not db.scalar(
+                select(RuleDefinition.id).where(RuleDefinition.organization_id == org.id)
+            )
+            rules = [
+                RuleDefinition(
+                    organization_id=org.id,
+                    code=code,
+                    description="Fictional integration rule",
+                    parameters_json=params,
+                )
+                for code, params in (
+                    ("AMOUNT_OUTLIER", {"multiplier": 3, "min_history": 1}),
+                    ("HIGH_VELOCITY", {"window_minutes": 10, "count_threshold": 2}),
+                    ("DEVICE_CHANGE", {}),
+                )
+            ]
+            db.add_all(rules)
+            db.flush()
+            print(json.dumps({rule.code: str(rule.id) for rule in rules}))
+        elif mode == "threshold":
             db.get(RiskSettings, org.id).alert_threshold = 0
         elif mode == "isolation":
             foreign = Organization(name="Fictional isolated scoring organization")

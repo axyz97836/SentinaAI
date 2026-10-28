@@ -5,7 +5,7 @@ permissions:
 
 jobs:
   foundation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
@@ -20,12 +20,14 @@ jobs:
           docker compose --env-file .env -f infra/compose.yaml config --quiet
           stat -c 'S3 source permissions: %u:%g %a' .local/seaweedfs.json
       - run: make up
+      - run: make model-runtime-check
       - run: make database-check
       - run: make migrate seed
       - run: make backend-check frontend-check infra-check outage-check
       - run: make ingestion-check
       - run: make model-check
       - run: make scoring-check
+      - run: make explanation-check
       - run: npm ci --ignore-scripts
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
