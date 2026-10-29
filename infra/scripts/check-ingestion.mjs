@@ -22,7 +22,7 @@ let csrf;
 let passed = 0;
 let ownsStack = false;
 const started = new Date().toISOString();
-const marker = ["--models", "--scoring", "--explanations"].some(arg => process.argv.includes(arg)) ? "fictional-c-" : "phase4-e2e-fictional-marker";
+const marker = ["--models", "--scoring", "--explanations", "--cases"].some(arg => process.argv.includes(arg)) ? "fictional-c-" : "phase4-e2e-fictional-marker";
 const header = "external_id,customer_ref,occurred_at,amount,currency,merchant_category,country_code,channel";
 const row = `${marker},fictional-customer,2026-10-20T10:00:00Z,12.34,INR,grocery,IN,WEB`;
 const csv = `${header}\n${row}\n`;
@@ -162,7 +162,10 @@ try {
   await prepareIsolatedStack();
   await ready();
   await loginAs(email);
-  if (process.argv.includes("--explanations")) {
+  if (process.argv.includes("--cases")) {
+    const { verifyCases } = await import("./check-cases.mjs");
+    await verifyCases({ compose, request, terminal, pass, loginAs, marker, upload });
+  } else if (process.argv.includes("--explanations")) {
     const { verifyExplanations } = await import("./check-explanations.mjs");
     await verifyExplanations({ compose, request, terminal, pass, loginAs, marker, upload });
   } else if (process.argv.includes("--scoring")) {
@@ -267,4 +270,4 @@ try {
   // This fixed project owns only isolated test volumes, never the main development volumes.
   if (ownsStack) await compose("down", "--volumes", "--remove-orphans");
 }
-console.log(`${passed} ${process.argv.includes("--explanations") ? "explanation" : process.argv.includes("--scoring") ? "scoring" : process.argv.includes("--models") ? "model" : "ingestion"} integration checks passed; isolated resources removed.`);
+console.log(`${passed} ${process.argv.includes("--cases") ? "case" : process.argv.includes("--explanations") ? "explanation" : process.argv.includes("--scoring") ? "scoring" : process.argv.includes("--models") ? "model" : "ingestion"} integration checks passed; isolated resources removed.`);

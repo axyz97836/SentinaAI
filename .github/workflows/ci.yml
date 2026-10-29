@@ -28,6 +28,7 @@ jobs:
       - run: make model-check
       - run: make scoring-check
       - run: make explanation-check
+      - run: make case-check
       - run: npm ci --ignore-scripts
         working-directory: frontend
       - run: npx playwright install --with-deps chromium
