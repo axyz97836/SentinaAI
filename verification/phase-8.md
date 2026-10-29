@@ -1,7 +1,9 @@
 # Phase 8 verification: alerts and case management backend
 
-Updated: 2026-10-29. **Implementation, local regression, security checks and Ponytail Review
-are complete. Publication and hosted CI are pending; Phase 8 is not yet declared complete.**
+Updated: 2026-10-29. **Phase 8 implementation, local regression, security/concurrency checks,
+Ponytail Review and hosted ARM64 CI are complete. Implementation commit 377d5c4 is published
+and its remote hash is verified. Phase 8 is ready for owner PR review; the final report-only
+commit and its hosted run are identified in the owner handoff. No merge or deployment.**
 
 ## Authorization and base
 
@@ -283,3 +285,105 @@ Final read-only main schema checks (`alembic current`, `alembic check`, SQLAlche
 inspection) passed: **0001_initial_schema (head)**, no new upgrade operations and **18 domain
 tables**. No migration or seed was run against main. Remote main was verified at 0ad65b4;
 the Phase 8 remote branch did not yet exist at the pre-publication check.
+
+## Implementation checkpoint publication
+
+[377d5c4d3ec553a671ea1164508145efc88790bb](https://github.com/axyz97836/SentinaAI/commit/377d5c4d3ec553a671ea1164508145efc88790bb)
+(`feat(investigations): add atomic alert and case workflows`) contains the complete locally
+verified implementation, tests, integration workflow and local browser harness correction.
+The staged file list/diff and whitespace/secret checks passed. No ignored evidence, credential,
+private dataset or model artifact was staged. An explicit push to
+`HEAD:refs/heads/feat/phase-08-alerts-cases` succeeded and `git ls-remote` returned the exact SHA.
+The branch tracks origin and the working tree was clean after that checkpoint. No Git
+authentication or synchronization error occurred; main remains the Phase 7 merge 0ad65b4.
+
+The post-commit secret scan covered **162 working files and 270 reachable historical blobs**
+plus API/worker logs, with no matches under the documented scan limits.
+[Hosted ARM64 workflow 40824299746](https://github.com/axyz97836/SentinaAI/actions/runs/40824299746)
+completed successfully against that exact implementation commit, as verified below.
+
+## Resume verification and completed hosted CI (2026-10-29)
+
+Resumed the existing branch and filesystem without resetting or reconstructing work. Local
+HEAD and the remote feature branch were both **377d5c4d3ec553a671ea1164508145efc88790bb**.
+The sole uncommitted change was the publication section above; it is preserved. Remote default
+HEAD and `refs/heads/main` remain **0ad65b44c8747632724b1f57e3aa5f0c79fa27ad**, the Phase 7 merge.
+Origin is still exactly `https://github.com/axyz97836/SentinaAI`.
+
+Direct GitHub REST reads of `/actions/runs/40824299746` and `/jobs?per_page=100` confirm
+**completed / success, attempt 1**, updated **2026-10-29T05:49:26Z**. This workflow contains
+one job, [foundation](https://github.com/axyz97836/SentinaAI/actions/runs/40824299746/job/123283668611),
+with all applicable checks implemented as steps. Every verification and cleanup step succeeded;
+no job was failed or cancelled. Only the conditional failure-diagnostics step was skipped,
+as expected on success. Downloaded logs confirm the counts independently of the saved watcher.
+
+| Hosted check at 377d5c4 | Actual completed result |
+|---|---|
+| Compose, stack, runtime | Configuration/credential metadata, builds/startup and API/worker ARM64 fingerprints PASS |
+| `make database-check` | **354 passed**, one existing warning, **75.58 s**; guarded disposable database |
+| CI-local `make migrate seed` | PASS on the disposable hosted stack; does not touch the owner's local data |
+| `make backend-check` | Ruff PASS, **80 files** formatted; mypy **52 modules** PASS; **247 passed**, 354 deselected, four existing warnings, **7.63 s** |
+| `make frontend-check` | Lint, strict types and production build PASS |
+| `make infra-check` | **5 groups passed**: restricted PostgreSQL, authenticated Redis, private/bucket-scoped S3, worker |
+| `make outage-check` | **8 groups passed**, including PostgreSQL/Redis/storage outage and recovery, liveness and port isolation |
+| Ingestion / model / scoring / explanation / case integration | **9 / 8 / 9 / 7 / 11 passed**; each disposable stack removed |
+| `npm test` (Playwright) | **8 passed, 0 failed, 4.5 s**, two CI workers, zero retries |
+| `npm audit --audit-level=high` | **0 vulnerabilities** |
+| `make down` and workflow completion | PASS; final job/run conclusion **success** |
+
+**609 distinct application tests passed = 354 database + 247 backend + 8 browser.**
+**44 separate integration checks passed = 9 + 8 + 9 + 7 + 11.** These agree with the final
+local totals; local and hosted executions are not added together as extra test coverage.
+The full Python dependency audit and frozen 2,000-row compatibility test remain valid local
+evidence, not checks falsely attributed to this hosted workflow.
+
+### Browser failure resolution
+
+All eight original browser tests passed in hosted CI, including authentication/HttpOnly/CSRF,
+320/375/768/1024/1440px navigation and keyboard checks, live API links and automated WCAG AA
+checks. Auth completed in **724 ms**; the previously failing 320/375/768px tests completed in
+**728/545/716 ms**. `page.goto("/")` navigation timeouts did not recur. The existing final
+isolated local run also passed all eight in **13.3 s**. The diff confirms that only local worker
+selection changed: CI concurrency, original timeout, zero retries, assertions and all tests
+remain intact. Local machine overload remains a capacity limitation, not a waived failing test.
+Browser coverage is the existing foundation/auth suite; the future case UI is not implemented.
+
+### Security, concurrency, audit integrity and final review
+
+The completed review is retained, with a focused resume check of route/auth dependencies,
+input schemas, tenant joins, transaction ownership, row locks, exact retries, immutable evidence
+reads and their database tests. Six PostgreSQL race scenarios and nine event/audit insertion
+failure cases are included in the passing database total. Existing schema tests deny application
+UPDATE/DELETE of case events and audit logs and deny DDL. The hosted case workflow independently
+passes real HTTP races, all three roles, foreign-org denial, safe validation, SQL event/audit
+reconciliation, unchanged historical score/explanation snapshots and sanitized runtime logs.
+No unresolved finding requires another code change or rerunning unchanged expensive local suites.
+
+**Ponytail Review verdict: Ship for owner review.** Expected load remains the bounded demo
+with one worker. Production throughput, external penetration testing, future case UI and public
+launch controls are not claimed. Pagination is stable for fixed data, not a frozen concurrent
+export. Existing deprecation warnings remain; no assertion or security control was waived.
+
+Resume commands also checked `git status`, history/remotes/diff, `git ls-remote`, service status,
+saved logs, approved-document SHA-256 hashes and the existing secret scanner. All **six main
+services are healthy**; no disposable test stack remained. All **11 protected hashes match**.
+The secret scan again covered **162 working files, 270 reachable historical blobs and API/worker
+logs**, with no findings. Limits remain known local secret values and common token/private-key
+patterns; this is not exhaustive secret detection or a penetration test.
+
+The first read-only `alembic current` attempt in the application container correctly failed
+because `migration_db_password` is absent. Repeating through the existing migration service
+with `docker compose --env-file .env -f infra/compose.yaml -f infra/compose.database.yaml
+--profile database run --rm --no-deps migration alembic current` returned
+**0001_initial_schema (head)**. No migration, seed, credential regeneration or main-data reset
+was executed. The prior no-drift/18-table comparison remains valid; no schema files changed.
+Sandbox access initially blocked system Git and GitHub DNS; approved external execution
+resolved those tool restrictions. No Git authentication or synchronization failure occurred.
+
+Evidence is preserved in ignored `.local/phase8-implementation-ci-final.json` and the
+mode-0600 `.local/phase4-ci-40824299746.zip` archive (legacy downloader filename), alongside
+the previously listed local logs. Only this report changes during the resume task. The eleven
+approved documents, Signal Atlas Design Pack, implementation, tests, dependencies, seed and
+private data are unchanged. The final handoff supplies the report commit SHA, verified remote
+ref and its independently completed hosted workflow result. Owner review/merge and any next
+phase remain separate decisions.
