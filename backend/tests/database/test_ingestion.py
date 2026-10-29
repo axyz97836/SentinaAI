@@ -261,6 +261,11 @@ def test_interrupted_upload_reconciliation(ingestion):
         assert db.get(Dataset, dataset_id).status == "REJECTED"
 
 
+class RedactedHeaders(dict):
+    def __repr__(self):
+        return "<synthetic request headers: CSRF proof redacted>"
+
+
 @pytest.fixture
 def client(ingestion):
     engine, sessions, storage, principal, settings = ingestion
@@ -282,10 +287,12 @@ def client(ingestion):
             client.cookies.set(settings.session_cookie, token)
             yield (
                 client,
-                {
-                    "Origin": "http://testserver",
-                    "X-CSRF-Token": auth.csrf.proof("session-header", token),
-                },
+                RedactedHeaders(
+                    {
+                        "Origin": "http://testserver",
+                        "X-CSRF-Token": auth.csrf.proof("session-header", token),
+                    }
+                ),
             )
     finally:
         with sessions.begin() as db:

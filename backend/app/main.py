@@ -20,6 +20,7 @@ from app.health import DependencyProbe, ReadinessProbe
 from app.ingestion.routes import router as ingestion_router
 from app.ingestion.service import reconcile
 from app.ingestion.storage import PrivateStorage
+from app.investigations.routes import router as investigations_router
 from app.ml.processing import reconcile_training
 from app.ml.routes import router as models_router
 from app.observability import configure_logging
@@ -106,6 +107,7 @@ def create_app(
     app.include_router(models_router)
     app.include_router(scoring_router)
     app.include_router(configuration_router)
+    app.include_router(investigations_router)
 
     @app.middleware("http")
     async def request_context(

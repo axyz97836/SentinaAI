@@ -17,17 +17,23 @@ class AuthBodyLimitMiddleware:
                 "/api/v1/transactions",
                 "/api/v1/admin/settings",
                 "/api/v1/admin/rules",
+                "/api/v1/alerts",
+                "/api/v1/cases",
             )
         ):
             await self.app(scope, receive, send)
             return
+        # A 2,000-character note can occupy 24 KiB when JSON escapes surrogate pairs.
+        limit = (
+            32768 if scope["path"].startswith(("/api/v1/alerts", "/api/v1/cases")) else self.limit
+        )
         body = bytearray()
         while True:
             message = await receive()
             if message["type"] == "http.disconnect":
                 return
             chunk = message.get("body", b"")
-            if len(body) + len(chunk) > self.limit:
+            if len(body) + len(chunk) > limit:
                 response = JSONResponse(
                     status_code=413,
                     content={

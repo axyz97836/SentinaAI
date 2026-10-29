@@ -7,8 +7,9 @@ the approved eighteen-table schema, Alembic migrations and fictional demo accoun
 Phase 3 adds session authentication, CSRF protection and reusable authorization guards.
 Phase 4 adds bounded CSV uploads, private storage and durable validation jobs.
 Phase 5 adds deterministic baseline training, verified private artifacts and explicit model activation.
-Phase 6 adds direct transaction scoring and durable CSV scoring. Investigation workflows remain future work.
+Phase 6 adds direct transaction scoring and durable CSV scoring.
 Phase 7 adds versioned risk configuration, factual rule evidence and supervised SHAP explanations.
+Phase 8 adds alert triage and the audited case investigation backend.
 
 The approved [implementation plan](docs/IMPLEMENTATION_PLAN.md) remains authoritative.
 All eleven planning/security documents are preserved. This project is not deployed.
@@ -426,6 +427,62 @@ The seed still creates no rules, and no public creation route is added. Use only
 fixtures for verification. `make explanation-check` exercises real SHAP, rule hits, ADMIN edits,
 historical replay, CSV scoring and isolation. Run it sequentially with the ingestion/model/scoring
 checks because those share one guarded disposable project. No frontend settings screen is included.
+
+## Phase 8 alerts and case management backend
+
+All three authenticated roles can use these organization-scoped endpoints under `/api/v1`:
+
+| Endpoint | Behavior |
+|---|---|
+| `GET /alerts` | Stored alerts with linked transaction reference, risk score/band and case ID |
+| `POST /alerts/{id}/dismiss` | `{reason}`; NEW to DISMISSED with actor and atomic audit |
+| `POST /alerts/{id}/cases` | Optional `{note}`; creates OPEN case and transitions alert to IN_CASE atomically |
+| `GET /cases` | Cases with status, assignee if present, version and timestamps |
+| `GET /cases/{id}` | Case, linked alert/transaction, original score/explanation and bounded timeline |
+| `PATCH /cases/{id}` | `{status:"IN_REVIEW",version,note?}`; OPEN to IN_REVIEW |
+| `POST /cases/{id}/events` | `{note}`; appends NOTE_ADDED to an unclosed case |
+| `POST /cases/{id}/resolve` | `{resolution,resolution_note,version}`; IN_REVIEW to CLOSED |
+
+Dismissal reasons must be nonblank and at most 1,000 characters. Notes are plain text, at most
+2,000 characters; required notes cannot be blank. Whitespace/CRLF is normalized, invalid text
+controls/encoding are rejected, and extra request fields are forbidden. Mutation bodies are
+bounded to 32 KiB, accommodating JSON-escaped Unicode; other JSON/upload limits remain intact.
+Unsafe requests retain session, Origin and CSRF checks. Unknown/foreign IDs return 404;
+state/version conflicts return 409 with refresh guidance. No assignment or reopening API exists.
+
+Alerts support `status`, `risk_band`, `date_from`, `date_to`, `cursor`, and `limit` (default 20,
+maximum 100). Cases support the same list parameters except risk band. Dates need explicit
+timezones and use inclusive lower/exclusive upper bounds: alert `created_at`, case `updated_at`.
+Lists order by those timestamps descending and UUID ascending. Cursors are stable for a fixed
+record set; concurrent case activity can change which page a case occupies.
+Case detail uses `events_limit` (default 50, maximum 100) and `events_cursor`; follow
+`next_events_cursor` for the complete chronological `(created_at,id)` timeline.
+
+Alert locks serialize dismissal versus case opening. Case locks serialize notes and state
+changes; expected versions protect state edits. Each successful state change increments the
+version once. Notes update activity time without changing the state version. Case detail holds
+a shared lock while reading its state and timeline. Case/event/audit writes share the existing
+request transaction and commit before HTTP success; audit metadata excludes note/reason text.
+
+Opening returns 201 initially and 200 for the same normalized opening note on an already-linked
+case, without another event. A changed opening note conflicts. Dismissal requires NEW and is
+not replayed after dismissal. Resolution accepts only CONFIRMED_FRAUD, FALSE_POSITIVE or
+INCONCLUSIVE with a mandatory note. Replaying the original resolution/note/version returns the
+closed case without another event; conflicting re-resolution and all closed-case edits fail.
+Investigator conclusions concern synthetic demo data and never update labels, scores or models.
+
+`make case-check` exercises real scoring through resolution, all roles, concurrency, retry,
+isolation and SQL/audit reconciliation in the existing disposable integration project. Run it
+sequentially with ingestion/model/scoring/explanation checks. See [Phase 8 evidence](verification/phase-8.md).
+This phase adds backend routes only; investigation UI is a later authorized phase.
+
+On the local Docker development setup, run `make -j1 check` without overlapping separate build
+or integration commands. Browser tests use one local worker to limit contention beside the
+six services; CI keeps Playwright's default worker count. Timeouts, assertions and test coverage
+are unchanged. After a standalone frontend build, recheck both the root page and
+`http://127.0.0.1:3000/api/v1/health/ready` before running `make browser-check`; service health
+observed before a resource-heavy build is not evidence of readiness afterward. The Phase 8
+report records the navigation trace, recurrence and concurrency comparison.
 
 ## Optional native backend development
 
