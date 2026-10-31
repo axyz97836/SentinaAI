@@ -1,6 +1,6 @@
 # Phase 9: Signal Atlas authentication and shell
 
-Updated 2026-10-30. **Initial visual-review checkpoint verified locally. Owner visual
+Updated 2026-10-31. **Refined visual-review checkpoint verified locally. Owner visual
 approval is pending. Phase 9 is not declared complete; no extensive polishing,
 merge, deployment or Phase 10 work is authorized by this report.**
 
@@ -226,3 +226,110 @@ starts the stack if needed; use the owner's existing ignored demo credentials.
 Publication commit/remote SHA and hosted workflow status are reported in the handoff.
 Only after owner approval will remaining Phase 9 checks and any requested visual
 adjustments proceed. Nothing here approves Phase 10, merging or deployment.
+
+## Visual refinement and screenshot review (2026-10-31)
+
+The owner explicitly authorized refining the existing checkpoint against the
+four-screen reference, then stopping for visual approval. The implementation was
+not restarted. The base remains published checkpoint
+[502d048b80e0294e6b5dc5099e9063f59343ebc1](https://github.com/axyz97836/SentinaAI/commit/502d048b80e0294e6b5dc5099e9063f59343ebc1)
+on `feat/phase-09-ui-shell-auth`.
+
+The reference was supplied as
+[SentinelAI_Phase9_Refined_Visual_Reference.png](../design/SentinelAI_Phase9_Refined_Visual_Reference.png),
+not the shorthand `design/phase-9-visual-reference.png` in the prompt. All four
+panels were inspected. The original filename/bytes are preserved (SHA-256
+`be023d3b39da0f9d3f1d0c3680bfcc72dc904bdbc5d2dca76b9b4e9812993c4a`).
+The PNG is a design reference only; no frontend component loads it or uses it as
+a background. The Signal Atlas pack and all eleven approved documents still match
+their original hashes.
+
+### Comparison of the four actual screens
+
+| Screen | Implemented reference elements | Deliberate differences / limitations |
+|---|---|---|
+| [Desktop login, 1440px](./phase-9/login-1440-refined.png) | 55/45 split, editorial heading, emerald serif emphasis, four methodology annotations, contour/grid drawing, vermilion marker, original terrain silhouette, aligned paper form panel | Uses the mandated Space Grotesk heading rather than the reference's serif-like first line. Terrain is a lightweight faceted SVG, not the reference's detailed engraving. No unsupported remember-me checkbox, example email, gradient or image background. |
+| [Mobile login, 375px](./phase-9/login-375-refined.png) | Compact heading, restrained contour fragment, paper sign-in section below the hero, consistent labelled controls, compact footer/disclaimer | The full disclaimer and accessible control sizes remain visible. No nonfunctional login-menu button or remember-me control. The page scrolls vertically rather than compressing text into the reference's shorter panel. |
+| [Desktop workspace, 1440px](./phase-9/workspace-1440-refined.png) | Compact backend-derived identity header, purposeful sidebar, terrain/contour chapter heading, three balanced information modules, compact session panel | Modules describe verified shell functionality, future frontend availability and interpretation limits. No fake metrics, notification bell, inactive destinations or account dropdown. The header identity link goes to the real session panel. Artwork is more geometric and less textured than the reference. |
+| [Mobile workspace, 375px](./phase-9/workspace-375-refined.png) | Compact header and working menu, organization/role strip, stacked information modules, readable session panel and sign-out action | All text and controls remain in normal document flow; no fixed panel obscures content. The full page is taller than the mockup because roadmap caveats and risk limitations are not clipped or hidden. |
+
+The palette, self-hosted fonts and original brand mark are retained. New original
+SVG icons replace text-glyph navigation icons. Graphics are decorative and hidden
+from assistive technology. Thin borders and flat surfaces replace ornamental effects.
+No new packages, font downloads, backend changes or authentication changes were made.
+
+### Verification retained and checked on resume
+
+The interrupted task completed the existing `make frontend-check` VS Code task:
+**ESLint PASS, strict TypeScript PASS, production build PASS**. It then ran:
+
+```sh
+cd frontend
+CI=1 PHASE9_SCREENSHOTS=1 npm test -- --workers=2
+```
+
+Actual result: **23 passed, 0 failed, 26.2 seconds**, two workers, zero retries.
+Evidence: `.local/phase9-refined-browser-two-workers.log`. This covers the original
+real login/logout/CSRF/protected-route checks, all three roles, revoked-session
+handling, drawer focus/Escape/restoration, JavaScript-disabled notice, automatic
+accessibility scans, reduced motion, font fallback and six viewport widths
+(320/375/768/1024/1440/1920px). Successful auth journeys additionally assert no
+uncaught browser page errors. This is not a claim that every console warning or
+every screen-reader/browser combination has been audited.
+
+On resume, **27 frontend source/test/font/configuration files** were compared against
+the tested running image with no substantive mismatch. Only a surplus blank line
+at the end of `brand.tsx` had been removed after build; that comparison normalized
+trailing whitespace. All four screenshot files are present, were captured during
+the passing run, and reflect the current implementation. They were inspected again;
+no capture or expensive test suite was repeated unnecessarily. The resume changed
+this report only, with no further visual redesign.
+
+Hash evidence is saved in ignored `.local/phase9-refinement-evidence.json`:
+
+```text
+e3c363ca728844d02249b40a9249f03cfd60114ff1e5dbb630dfa272ce4557cb  login-1440-refined.png
+5bd64cd867d187898837b04f75cc5658566bc65f729060908953f27a7f764db7  login-375-refined.png
+94a9207144f681e2cb4ac71cba4223dc0b8f85b9eee00a23a617b2c5d9db47ce  workspace-1440-refined.png
+5db1e77982e92dd353cce7b62452f91d88f367e312dc1c48667577e7981df538  workspace-375-refined.png
+```
+
+### Prior hosted failure and honest CI boundary
+
+[Checkpoint workflow 41095203591](https://github.com/axyz97836/SentinaAI/actions/runs/41095203591)
+finished **failure** on 502d048: **22 browser tests passed, 1 failed**, 14.4 s. The
+analyst journey failed its workspace horizontal-overflow assertion after a viewport
+resize. All preceding database/backend/frontend/infrastructure/outage/integration
+steps passed; the later npm audit step was skipped. This run is not reported as green.
+Downloaded evidence is in ignored `.local/phase4-ci-41095203591.zip`.
+
+The log does not identify the specific width or overflowing element. A read-only
+local measurement of the original layout at all six widths found no overflow,
+recorded in `.local/phase9-original-overflow.json`. An exact historical cause is
+therefore unconfirmed. The refinement uses bounded grid columns and a compact mobile
+header; its two-worker regression passes. The test now waits for font readiness and
+reports exact requested/viewport/document widths, requiring equality rather than
+relaxing the prior no-overflow condition. No timeout/retry/skip change was made.
+A new hosted result is still needed before final Phase 9 completion.
+
+### Refinement scope, review and owner gate
+
+Changes since 502d048: `frontend/app/_components/{brand.tsx,workspace.tsx,atlas-graphics.tsx}`,
+`frontend/app/{login,dashboard}/page.tsx`, `frontend/app/globals.css`, the two existing
+browser suites, this report, four refined screenshots and the supplied reference.
+The initial screenshots remain intact. Auth helpers, server session lookup, cookie
+proxy, CSRF/session event handlers, backend, locks, schema and protected documents
+are unchanged. Prior infrastructure/dependency checks remain applicable to this
+visual-only change; no new run is claimed here.
+
+Ponytail Review: the refinement follows the existing components, replaces the large
+empty panel with informational modules, and removes the unused orbit illustration.
+Review covered data-derived identity, working links, unchanged authentication/event
+handlers, SVG scope, responsive CSS, readable caveats and the strengthened browser
+assertions. No confirmed material finding remains for this visual checkpoint.
+
+**Owner visual approval remains pending. Phase 9 is not complete.** Remaining
+limitations include the stylized terrain, longer mobile composition, unresolved
+historical CI overflow cause, a new hosted CI result, and the previously listed
+final production-browser/elapsed-expiry/zoom/screen-reader checks. No additional
+polish, Phase 10, PR publication/merge or deployment is performed at this gate.

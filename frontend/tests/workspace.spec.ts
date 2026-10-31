@@ -21,6 +21,8 @@ async function signIn(page: Page, account: string) {
 
 for (const [account, role] of [["analyst", "Fraud analyst"], ["risk-manager", "Risk manager"], ["admin", "Administrator"]]) {
   test(`${account} signs in through the real form and revokes the session on logout`, async ({ page, context }) => {
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
     await signIn(page, `${account}@sentinel-demo.invalid`);
     await expect(page.locator(".account-role")).toHaveText(role);
     const cookie = (await context.cookies()).find(c => c.name.endsWith("sentinel_session"));
@@ -32,17 +34,19 @@ for (const [account, role] of [["analyst", "Fraud analyst"], ["risk-manager", "R
     await expect(nav.getByRole("link", { name: "Overview" })).toBeVisible();
     expect((await page.request.get("/api/v1/auth/me")).status()).toBe(200);
     if (account === "analyst") {
+      await page.evaluate(() => document.fonts.ready);
       for (const width of [320, 375, 768, 1024, 1440, 1920]) {
         await page.setViewportSize({ width, height: 900 });
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        const bounds = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+        expect(bounds, `workspace layout at ${width}px`).toEqual({ viewport: width, document: width });
       }
       expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze()).violations).toEqual([]);
       if (process.env.PHASE9_SCREENSHOTS === "1") {
         const folder = resolve(__dirname, "../../verification/phase-9");
         await mkdir(folder, { recursive: true });
         for (const width of [1440, 375]) {
-          await page.setViewportSize({ width, height: 1000 });
-          await page.screenshot({ path: `${folder}/workspace-${width}.png`, fullPage: true });
+          await page.setViewportSize({ width, height: 900 });
+          await page.screenshot({ path: `${folder}/workspace-${width}-refined.png`, fullPage: true });
         }
       }
     }
@@ -53,6 +57,7 @@ for (const [account, role] of [["analyst", "Fraud analyst"], ["risk-manager", "R
     expect((await page.request.get("/api/v1/auth/me", { headers: { Cookie: staleCookie } })).status()).toBe(401);
     await page.goBack();
     await expect(page.getByRole("heading", { name: "A place for clear decisions." })).toHaveCount(0);
+    expect(errors).toEqual([]);
   });
 }
 
@@ -120,8 +125,8 @@ test("capture credential-free login review images", async ({ page }) => {
     await mkdir(folder, { recursive: true });
     await page.evaluate(() => document.fonts.ready);
     for (const width of [1440, 375]) {
-      await page.setViewportSize({ width, height: 1000 });
-      await page.screenshot({ path: `${folder}/login-${width}.png`, fullPage: true });
+      await page.setViewportSize({ width, height: 900 });
+      await page.screenshot({ path: `${folder}/login-${width}-refined.png`, fullPage: true });
     }
   }
 });

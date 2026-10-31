@@ -62,7 +62,7 @@ test("unauthenticated dashboard never includes protected content", async ({ requ
   const response = await request.get("/dashboard", { maxRedirects: 0 });
   expect(response.status()).toBe(307);
   expect(response.headers().location).toBe("/login?reason=expired");
-  expect(await response.text()).not.toContain("The foundation is ready");
+  expect(await response.text()).not.toContain("Foundation is ready");
   await page.goto("/dashboard");
   await expect(page).toHaveURL(/\/login\?reason=expired$/);
   await expect(page.getByRole("status")).toContainText("Sign in again");

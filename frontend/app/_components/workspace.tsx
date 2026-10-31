@@ -4,13 +4,15 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { authRequest, csrfProof, roleLabels, type Identity } from "../_lib/auth";
 import { Brand } from "./brand";
+import { Contours, Icon } from "./atlas-graphics";
 import { Button, Footer, Status } from "./ui";
 import { useHydrated } from "../_lib/use-hydrated";
 
 function Navigation({ identity }: { identity: Identity }) {
   return <><p className="eyebrow rail-label">Workspace</p>
-    <nav aria-label="Workspace"><a className="nav-item" href="/dashboard" aria-current="page"><span aria-hidden="true">▦</span> Overview <span className="nav-arrow" aria-hidden="true">↗</span></a></nav>
-    <div className="rail-context"><p className="eyebrow">Current access</p><p>{roleLabels[identity.role]}</p><p className="muted">Only available workspace pages appear here.</p></div>
+    <nav aria-label="Workspace"><a className="nav-item" href="/dashboard" aria-current="page"><Icon name="home" /> Overview</a></nav>
+    <div className="rail-context"><p className="eyebrow">Current access</p><div className="rail-identity"><Icon name="person" /><div><strong>{identity.user.display_name}</strong><p className="muted">{roleLabels[identity.role]}</p></div></div><div className="rail-organization"><strong>{identity.organization.name}</strong><p className="muted">Organization</p></div></div>
+    <p className="rail-purpose">A dedicated space for transaction signals, evidence and clear reasoning. Only available pages appear here.</p>
   </>;
 }
 
@@ -85,10 +87,10 @@ export function Workspace({ identity, children }: { identity: Identity; children
   </main><Footer /></div>;
 
   return <div className="workspace">
-    <header className="workspace-header"><Brand /><span className="eyebrow header-note">Signal Atlas / Workspace</span>
-      <button ref={menu} disabled={!hydrated} className="button secondary mobile-toggle" aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => { dialog.current?.showModal(); setMenuOpen(true); }}>Menu <span aria-hidden="true">☰</span></button>
+    <header className="workspace-header"><Brand /><div className="header-session"><span className="eyebrow header-note">Signal Atlas / Demo workspace</span><a href="#account-heading" className="header-account"><Icon name="person" /><span><strong>{identity.user.display_name}</strong><span>{roleLabels[identity.role]}</span></span></a></div>
+      <button ref={menu} disabled={!hydrated} className="button secondary mobile-toggle" aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => { dialog.current?.showModal(); setMenuOpen(true); }}><Icon name="menu" /></button>
     </header>
-    <aside className="sidebar"><Navigation identity={identity} /><div className="rail-footnote"><span className="small-cross" aria-hidden="true">+</span><p>Keep the evidence<br />in view.</p></div></aside>
+    <aside className="sidebar"><Navigation identity={identity} /><div className="rail-footnote"><Contours /><p>Keep the evidence<br />in view.</p></div></aside>
     <dialog id="mobile-navigation" ref={dialog} className="mobile-drawer" aria-labelledby="navigation-title" onClose={() => { setMenuOpen(false); menu.current?.focus(); }} onKeyDown={event => {
       if (event.key !== "Tab") return;
       const controls = event.currentTarget.querySelectorAll<HTMLElement>("a[href], button:not(:disabled)");
@@ -102,7 +104,7 @@ export function Workspace({ identity, children }: { identity: Identity; children
     </dialog>
     <div className="workspace-body"><div className="account-bar"><span>{identity.organization.name}</span><span className="account-role">{roleLabels[identity.role]}</span></div>
       <main id="main" className="workspace-main">{children}
-        <section className="account-panel" aria-labelledby="account-heading"><div><p className="eyebrow">Your session</p><h2 id="account-heading">{identity.user.display_name}</h2><p className="muted">{roleLabels[identity.role]} · {identity.organization.name}</p></div><Button className="secondary" disabled={busy || !hydrated} onClick={logout}>{busy ? "Signing out…" : "Sign out"}<span aria-hidden="true">↗</span></Button>
+        <section className="account-panel" aria-labelledby="account-heading"><div className="session-identity"><span className="session-icon"><Icon name="person" /></span><div><p className="eyebrow">Your session</p><h2 id="account-heading">{identity.user.display_name}</h2><p className="muted">{roleLabels[identity.role]} · {identity.organization.name}</p></div></div><Button className="secondary" disabled={busy || !hydrated} onClick={logout}>{busy ? "Signing out…" : "Sign out"}<span aria-hidden="true">↗</span></Button>
           {logoutError && <Status error>{logoutError}</Status>}
         </section>
       </main><Footer />
