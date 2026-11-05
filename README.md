@@ -242,8 +242,11 @@ These helpers do not imply future business endpoints have been implemented or te
 
 `make database-check` also starts private disposable Redis and runs auth integration
 tests. Browser auth regression uses the existing fictional account, creates/revokes
-one real session and writes corresponding audit events; tracing is disabled for that
-test to keep credentials out of artifacts. See [Phase 3 evidence](verification/phase-3.md).
+real sessions and writes corresponding audit events. Authentication tests disable
+traces, video and automatic screenshots. Playwright's automatic AI DOM failure
+snapshot is disabled because it can include password input values; sanitized errors
+and assertion diagnostics remain enabled. See [Phase 3 evidence](verification/phase-3.md)
+and [Phase 9 security evidence](verification/phase-9.md).
 
 ## Phase 4 CSV validation and jobs
 
@@ -516,8 +519,12 @@ superuser rights. Migration credentials will stay separate from this app login.
 - SeaweedFS 4.48 (Apache-2.0) supplies local private S3 storage. The application key
   is restricted to the configured bucket. Admin UI, WebDAV, Iceberg/Lance endpoints
   and cluster telemetry are disabled. No cloud storage provider has been selected.
-- The frontend uses locally authored HTML/Tailwind and system fonts. No animation,
-  chart, tracking, third-party UI or remote font package is installed.
+- The frontend uses locally authored HTML/Tailwind and self-hosted Signal Atlas fonts
+  with system fallbacks. [Font licenses and provenance](frontend/app/fonts/README.md)
+  are included; no browser request to a font provider is needed. No animation,
+  chart, tracking or third-party UI package is installed.
+- A development-only minimatch 11.0.1 override fixes GHSA-g3hv-75wg-m249 without
+  changing direct lint/runtime package pins. Its exact helper versions are locked.
 - Direct ESLint/TypeScript/React rules avoid a vulnerable dependency in the current
   Next.js bundled lint configuration. Framework type generation/build still run.
 
@@ -548,10 +555,30 @@ exit, not automatic repair of every possible failure.
 
 ## Scope and remaining gates
 
-Phase 5 implements backend model training and activation. The login/upload frontend,
-operational scoring, case workflows, dashboards, reports and deployment remain pending.
-Phase 6 requires separate explicit owner approval.
-Legal pages, full navigation, favicon and custom 404 are Phase 9/launch work; the
-foundation does not display links to routes that do not exist. No real financial or
-personal data may be added. The existing security checklist retains its historical
-planning status; the Phase 1 report records only checks actually performed here.
+Phases 1–8 provide the verified backend foundation, authentication, ingestion,
+training, scoring, explanations, alerts and cases. Phase 9 adds real login/logout,
+server-verified sessions and the owner-approved Signal Atlas responsive shell.
+Root routes to `/login` or `/dashboard`. Only the working Overview destination is
+shown; the workspace states clearly that operational interfaces are not available.
+Privacy and Terms are owner-review drafts, and the original icon and custom 404 are
+implemented. Approval of the visual design does not authorize public deployment.
+
+Use `make up` and open `http://127.0.0.1:3000/login` with an existing local demo
+account. `make frontend-check` runs lint, strict TypeScript and the production build;
+`make browser-check` exercises the real API and responsive/accessibility behavior.
+Run checks sequentially and avoid concurrent builds while testing browsers on a
+resource-constrained laptop. No retry or extended test timeout hides an application
+failure. Results, screenshots and limitations are in [Phase 9 evidence](verification/phase-9.md).
+
+Optional `make session-check` uses the guarded disposable integration project,
+existing credentials read-only, and a local production frontend on loopback port
+18009. Its test-only 60-second idle and 300-second absolute limits exercise real
+elapsed expiry in approximately six minutes. Main settings/data are untouched.
+It requires the existing frontend npm/Playwright installation and must not overlap
+other integration commands sharing that disposable project. Test resources are
+removed on completion.
+
+Transaction/upload screens, operational dashboards/cases UI, reports/admin screens
+and deployment require their own later phase approvals. No real financial or personal
+data may be added. The eleven approved documents retain their historical planning
+status; actual implementation evidence belongs under `verification/`.

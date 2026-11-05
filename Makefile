@@ -59,6 +59,10 @@ explanation-check:
 case-check:
 	node infra/scripts/check-ingestion.mjs --cases
 
+.PHONY: session-check
+session-check:
+	node infra/scripts/check-ingestion.mjs --sessions
+
 frontend-check:
 	$(COMPOSE) build frontend
 	$(COMPOSE) run --rm --no-deps frontend npm run check

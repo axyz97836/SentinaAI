@@ -36,8 +36,8 @@ a, button, input { transition: color 150ms, background-color 150ms, border-color
 .public-header { background: var(--sa-ivory); }
 .header-note { color: var(--sa-muted); text-align: right; }
 .footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 24px; padding: 16px 4vw; border-top: 1px solid var(--sa-border); font-size: 12px; color: var(--sa-muted); }
-.footer nav { display: flex; flex-wrap: wrap; gap: 24px; }
-.footer a { display: inline-flex; align-items: center; min-height: 44px; }
+.footer nav { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; }
+.footer a { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 2px; }
 .footer a:hover { color: var(--sa-emerald); }
 .login-page { background: var(--sa-ivory); min-height: 100svh; }
 .login-page .public-header { position: relative; isolation: isolate; background: var(--sa-paper); border: 0; padding-inline: 4.4vw; }
@@ -58,7 +58,7 @@ a, button, input { transition: color 150ms, background-color 150ms, border-color
 .terrain { color: var(--sa-navy); }
 .login-landscape { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
 .login-landscape .contours { position: absolute; width: 62%; height: 100%; top: -8%; right: -10%; }
-.login-landscape .terrain { position: absolute; bottom: 57px; left: -4%; width: 68%; height: auto; opacity: .75; }
+.login-landscape .terrain { position: absolute; bottom: 57px; left: -4%; width: 68%; height: auto; opacity: .55; }
 .art-caption { display: flex; justify-content: space-between; position: relative; margin-top: auto; padding: 22px 0; border-top: 1px solid var(--sa-border); font-family: monospace; font-size: 10px; text-transform: uppercase; letter-spacing: .12em; color: var(--sa-muted); }
 .login-panel { display: flex; align-items: center; justify-content: center; padding: 40px 5vw 48px; background: var(--sa-paper); border-left: 1px solid var(--sa-border); }
 .login-form-wrap { width: 100%; max-width: 405px; }
@@ -120,8 +120,8 @@ fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .workspace-intro h1 { font-size: clamp(1.8rem, 3vw, 2.9rem); }
 .workspace-intro .muted { font-size: 14px; max-width: 550px; }
 .workspace-landscape { position: absolute; right: -5%; top: 0; bottom: 0; width: 38%; pointer-events: none; z-index: 0; }
-.workspace-landscape .contours { position: absolute; right: 12%; top: -55%; width: 100%; height: 190%; color: var(--sa-gold); opacity: .7; }
-.workspace-landscape .terrain { position: absolute; bottom: 0; width: 100%; right: 0; opacity: .6; }
+.workspace-landscape .contours { position: absolute; right: 12%; top: -55%; width: 100%; height: 190%; color: var(--sa-gold); opacity: .45; }
+.workspace-landscape .terrain { position: absolute; bottom: 0; width: 100%; right: 0; opacity: .42; }
 .information-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .information-module { display: flex; gap: 16px; padding: 22px 18px; background: var(--sa-paper); border: 1px solid var(--sa-border); border-top: 2px solid var(--sa-navy); border-radius: 4px; min-width: 0; }
 .information-module > div:last-child { min-width: 0; }
@@ -188,11 +188,11 @@ body:has(.mobile-drawer[open]) { overflow: hidden; }
   .login-page .public-header::before { display: none; }
   .login-page .public-header .brand { padding: 0; border: 0; font-size: 22px; }
   .login-grid { display: flex; flex-direction: column; }
-  .login-story { padding: 22px 24px 70px; min-height: 0; }
+  .login-story { padding: 26px 24px 66px; min-height: 0; }
   .login-story > .eyebrow { font-size: 9px; letter-spacing: .08em; }
   .index-mark { width: 22px; height: 22px; margin-right: 8px; }
-  .login-story h1 { margin-top: 18px; font-size: clamp(2.2rem, 9.8vw, 3.4rem); }
-  .story-copy { font-size: 13px; margin-top: 16px; max-width: 260px; }
+  .login-story h1 { margin-top: 20px; font-size: clamp(2.2rem, 9.8vw, 3.4rem); }
+  .story-copy { font-size: 13px; margin-top: 18px; max-width: 260px; }
   .method-notes, .art-caption, .login-landscape .terrain { display: none; }
   .login-landscape .contours { width: 250px; height: 260px; top: auto; bottom: -140px; right: -35px; }
   .login-panel { position: relative; z-index: 1; margin-top: -8px; border: 1px solid var(--sa-border); border-inline: 0; border-radius: 6px 6px 0 0; padding: 28px 24px; }
@@ -204,8 +204,8 @@ body:has(.mobile-drawer[open]) { overflow: hidden; }
   .field { margin-bottom: 18px; } .field label { font-size: 13px; }
   .login-note { margin-top: 24px; padding-top: 20px; font-size: 12px; }
   .form-help { font-size: 11px; }
-  .footer { padding: 12px 24px; gap: 0; font-size: 11px; }
-  .footer nav { gap: 22px; }
+  .footer { padding: 12px 24px; gap: 4px; font-size: 11px; }
+  .footer nav { gap: 24px; }
   .workspace-main { padding: 0 16px 24px; }
   .workspace .footer, .account-bar { padding-inline: 20px; }
   .account-bar { font-size: 10px; gap: 6px; }
@@ -216,10 +216,10 @@ body:has(.mobile-drawer[open]) { overflow: hidden; }
   .workspace-intro .muted { font-size: 12px; max-width: 225px; }
   .workspace-landscape { width: 36%; top: 10px; bottom: auto; height: 105px; right: -8%; }
   .information-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .information-module { flex-direction: row; gap: 14px; padding: 18px 14px; }
+  .information-module { flex-direction: row; gap: 12px; padding: 18px 16px; }
   .module-icon { width: 34px; height: 34px; }
   .module-icon .ui-icon { width: 24px; height: 24px; }
-  .information-module h2 { font-size: 15px; margin-bottom: 8px; }
+  .information-module h2 { font-size: 15px; margin-bottom: 10px; }
   .information-module p, .information-module li { font-size: 12px; }
   .information-module .module-footnote { font-size: 11px; margin-top: 8px; }
   .account-panel { padding: 18px 14px; gap: 16px; }

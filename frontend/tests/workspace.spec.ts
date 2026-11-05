@@ -13,7 +13,11 @@ async function signIn(page: Page, account: string) {
   if (saved.purpose !== "LOCAL_SYNTHETIC_DEMO_ONLY" || typeof saved.accounts[account] !== "string") throw Error("Existing synthetic credentials required");
   await page.goto("/login");
   await page.getByLabel("Email address").fill(account);
-  await page.getByLabel("Password", { exact: true }).fill(saved.accounts[account]);
+  try {
+    await page.getByLabel("Password", { exact: true }).fill(saved.accounts[account]);
+  } catch {
+    throw new Error("Password entry failed; credential omitted from diagnostics.");
+  }
   await page.getByRole("button", { name: "Sign in to workspace" }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole("heading", { name: "A place for clear decisions." })).toBeVisible();
@@ -46,7 +50,7 @@ for (const [account, role] of [["analyst", "Fraud analyst"], ["risk-manager", "R
         await mkdir(folder, { recursive: true });
         for (const width of [1440, 375]) {
           await page.setViewportSize({ width, height: 900 });
-          await page.screenshot({ path: `${folder}/workspace-${width}-refined.png`, fullPage: true });
+          await page.screenshot({ path: `${folder}/workspace-${width}-final.png`, fullPage: true });
         }
       }
     }
@@ -126,7 +130,7 @@ test("capture credential-free login review images", async ({ page }) => {
     await page.evaluate(() => document.fonts.ready);
     for (const width of [1440, 375]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.screenshot({ path: `${folder}/login-${width}-refined.png`, fullPage: true });
+      await page.screenshot({ path: `${folder}/login-${width}-final.png`, fullPage: true });
     }
   }
 });

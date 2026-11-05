@@ -1,8 +1,9 @@
 # Phase 9: Signal Atlas authentication and shell
 
-Updated 2026-10-31. **Refined visual-review checkpoint verified locally. Owner visual
-approval is pending. Phase 9 is not declared complete; no extensive polishing,
-merge, deployment or Phase 10 work is authorized by this report.**
+Updated 2026-11-05. **Owner visual approval is received. Final polish, credential
+remediation, local production verification and review are complete. Final publication
+and hosted CI are the remaining gate; their exact commit/run are recorded in the
+handoff. No merge, deployment or Phase 10 is authorized.**
 
 ## Authorization, resume and preservation
 
@@ -333,3 +334,193 @@ limitations include the stylized terrain, longer mobile composition, unresolved
 historical CI overflow cause, a new hosted CI result, and the previously listed
 final production-browser/elapsed-expiry/zoom/screen-reader checks. No additional
 polish, Phase 10, PR publication/merge or deployment is performed at this gate.
+
+## Owner approval and final Phase 9 verification
+
+The owner's **PHASE 9 FINAL APPROVAL & COMPLETION** instruction explicitly approved
+all four refined screens, branding, layout, palette, typography and responsive
+direction. This supersedes the earlier pending-approval notes. The final pass only
+reduces desktop terrain opacity, softens the workspace decoration, adjusts mobile
+hero/card spacing and improves legal-link alignment. No redesign or future screen.
+
+### Approved credential remediation
+
+An earlier production test timed out with the login request pending. Playwright's
+automatic AI failure-context DOM snapshot included the local synthetic analyst
+password, despite disabled trace/video/screenshots. Reading that diagnostic also
+reproduced the value in this conversation. The owner acknowledged both exposures
+and explicitly authorized analyst-only rotation, appropriate session invalidation,
+redacted evidence preservation and cleanup. No credential value appears here.
+
+Rotation was first attempted while Docker was stopped; no database operation ran.
+After starting the existing engine and services, a non-disclosing comparison
+confirmed that rotation was still required. The local recovery script reused the
+existing seed credential validator, Argon2id hasher, database/session primitives and
+provisioning advisory lock. It did not rerun seed or add a password-reset API.
+It generated a strong replacement locally, changed only the analyst hash and the
+analyst entry in the existing ignored credential file, and revoked **one** unrevoked
+analyst session. Other user hashes and credential entries were compared unchanged.
+The file remains **0600**, replaced atomically after the database transaction.
+
+Verified on **2026-11-04T17:22:14Z** through the actual API: old password **401**,
+replacement **200**, verification-session logout **204**. Subsequent production
+browser tests use the replacement successfully. It was not displayed or committed,
+and rotation was not repeated during resumes. No other account, signing key,
+infrastructure credential, model or domain record was regenerated or reset.
+
+Exposure assessment checked **197 tracked files**, **357 blobs reachable across all
+local refs**, and **563 local diagnostic files/archives**, including downloaded
+Phase 9 CI logs. The old value occurred only in the two known local error-context
+copies. No tracked/history/CI-log match. Both Phase 9 Actions runs reported **zero
+uploaded artifacts**. This is a scoped known-value assessment, not proof about
+unavailable external systems. The acknowledged transcript was not rewritten.
+
+Both credential-bearing originals were removed after preserving **0600 redacted
+copies** containing the failure details. Unrelated evidence was preserved. Removal
+does not claim forensic erasure from storage backups; invalidation is the protection
+against the old value in copies or the transcript.
+
+Diagnostic protection now sets `PLAYWRIGHT_NO_COPY_PROMPT=1`, supported by the pinned
+runner, to suppress the password-bearing automatic DOM snapshot. Authentication
+traces, video and automatic screenshots remain disabled. Password-fill failures
+return a fixed sanitized error; all existing auth assertions remain. A separate
+intentional-failure probe generated an error report with **zero occurrences** of its
+random noncredential password canary. It is not counted as an application test.
+Final scan: **65 Phase 9 diagnostic files**, no current demo-password matches, and
+both compromised original paths absent. Known-value working/history/runtime-log
+scan: **202 working files, 319 HEAD-reachable blobs**, no matches under the previously
+documented scanner limits. The all-ref old-credential scan above is a distinct scope.
+
+Private evidence: `.local/phase9-rotation.json`, `phase9-exposure-assessment.json`,
+`phase9-ci-exposure-scope.json`, `phase9-diagnostic-cleanup.json`,
+`phase9-diagnostic-probe-result.json`, `phase9-diagnostic-final-scan.json` and
+`phase9-final-secret-scan.log`. No recovery script, credential or private diagnostic
+is a deliverable or staged for Git.
+
+### Production browser failure and controlled retest
+
+The first production-mode run against the disposable stack had **22 passed, 1 failed**.
+The analyst login was still displaying the pending state when the existing 5-second
+URL assertion expired. The entire test took 13.9 s; the separate auth-proxy test took
+19.8 s. The main stack, a second full test stack, elapsed-session browser contexts
+and other browser/tool activity overlapped. The intended request-timing capture was
+empty after disposable-stack teardown, so the exact historical server-side cause
+cannot be reconstructed. No assertion that it was an auth rejection or a proven
+specific OS/process bottleneck is made.
+
+The reproducible final procedure uses one six-service stack, waits for the production
+build/readiness, and then runs the existing **one local browser worker** without
+overlapping builds. Main credentials/data are preserved. The local production
+overlay only starts the frontend with `npm run build && npm run start`; it is not
+a deployment or a change to backend security settings. Preflight: all six services
+healthy, login HTTP **200 in 0.051077 s**, proxied readiness `{status:ready}`. Recorded
+container memory was approximately 716 MiB total in the 3.825 GiB Docker VM.
+
+`PHASE9_SCREENSHOTS=1 make browser-check` then passed **23/23 in 15.7 s**, exit 0,
+without retries or timeout changes. After the development-dependency security fix
+below, the final production run passed **23/23 in 10.4 s**, exit 0. These are repeats
+of the same 23 tests, not 46 tests. The login failure has not recurred in these
+controlled runs. A separate sanitized final request sample measured CSRF **17 ms**,
+login **200 / 82 ms**, CSRF **12 ms**, and logout **204 / 10 ms**. Historical timing
+uncertainty remains an evidence limitation, not a waived current failing check.
+
+Evidence: `.local/phase9-production-browser.log` (failed attempt),
+`phase9-final-services.log`, `phase9-final-load.log`, `phase9-production-browser-final.log`,
+`phase9-production-security-browser.log`, `phase9-auth-request-timings.json`.
+
+### Elapsed expiry and accessibility completion
+
+`make session-check` reuses the guarded disposable integration project and existing
+credentials read-only. Only that test API receives 60-second idle and 300-second
+absolute limits; main settings remain unchanged. It starts an actual production
+frontend on loopback port 18009. **Five checks passed**: real form login/server-side
+workspace verification, idle expiry with expired-session UI redirect, activity
+maintaining validity before the absolute deadline, absolute expiry rejecting the
+original cookie despite activity, and log/credential-file preservation. Real elapsed
+observations were **58, 112, 163, 214, 266 and 317 seconds**. Resources were removed.
+This is separate from the ordinary 23 browser tests and unchanged 44 backend workflow
+integration checks. It uses no fake clock and does not run destructive tests on main.
+
+Native Chromium zoom was verified through its actual tab zoom API in a temporary
+isolated browser profile, using a local helper with **no extension permissions**.
+There was no change to the user's browser profile. **12 checks passed**: login,
+workspace, Privacy and Terms at 100/200/400%. Measured CSS viewports were
+1440/720/360px with device-pixel ratios 2/4/8; document width never exceeded viewport.
+Keyboard opening, Shift+Tab, Escape and focus restoration also passed in the zoomed
+mobile drawer. Real login/logout passed in this browser context.
+
+The native UI tool initially could not start because of a sandbox/OpenSSL error;
+synthetic keyboard zoom commands also did not change zoom and were not counted as
+passes. The native-API helper initially compared 400% to exact floating-point `4`;
+Chromium returns `3.9999999999999996`. A numerical tolerance for that scale measurement
+fixed the helper; the strict no-overflow check was retained. No product change was
+needed for zoom. Evidence: `.local/phase9-native-zoom.json` and related local images.
+
+Automated WCAG A/AA scans, visible-focus/keyboard checks, six-width reflow, reduced
+motion and blocked-font fallback all pass in the full browser suite. The actual
+screens and zoom captures were inspected for typography, clipping and overlap.
+This is an accessibility spot check and automated scan, not WCAG certification or
+an exhaustive assistive-technology/browser audit. The app remains light-first.
+
+### Dependency audit and final checks
+
+The current Python audit of the complete unchanged development lock (including
+runtime packages) reports **No known vulnerabilities**, exit 0. Frontend audit
+initially reported the newly updated **GHSA-g3hv-75wg-m249**, one minimatch advisory
+propagating as ten moderate findings through lint dependencies. It is development-only.
+No forced ESLint downgrade, audit waiver or runtime upgrade was used.
+
+The manifest pins a minimatch **11.0.1** override with brace-expansion **5.0.12** and
+`@isaacs/nonrecursive-glob-match` **1.0.1**. The latter is the required security helper,
+licensed BlueOak-1.0.0; minimatch keeps BlueOak-1.0.0 and brace-expansion is MIT.
+Published exports retain CommonJS/ESM support and the approved Node 22 runtime is
+supported. The security lock diff changes only minimatch and adds its helper; the
+brace package was already at the pinned version. All direct/runtime pins and other
+lock entries remain unchanged. Six unrelated optional metadata entries introduced
+by npm were restored before final validation. Install scripts remain disabled.
+
+`npm ci --ignore-scripts`, ESLint, strict TypeScript and the production build all
+pass with the final narrowed lock. `npm audit --audit-level=moderate` reports
+**0 vulnerabilities**. The override is outside the lint tools' current minimatch
+major constraint, so it is explicit and verified; review removal when their declared
+dependency accepts a patched version. [Advisory](https://github.com/advisories/GHSA-g3hv-75wg-m249).
+
+`make infra-check`: **5/5 groups passed**. All eleven approved-document hashes match.
+No schema, backend auth/scoring/SHAP/case behavior, model artifact or private data
+change. Full unchanged backend/database/outage/workflow regression is also executed
+by the final hosted workflow; its actual result must be checked before handoff.
+
+The prior refined checkpoint ea91bde was independently confirmed **successful** in
+[workflow 41188160995](https://github.com/axyz97836/SentinaAI/actions/runs/41188160995):
+**354 database tests, 247 backend tests, 23 browser tests**, plus **44 integration
+checks** (9 ingestion, 8 model, 9 scoring, 7 explanation, 11 case). Its exact browser
+count was 23 passed in 14.8 s. This closes the earlier hosted overflow regression
+for the refined implementation; final-HEAD CI remains a separate publication gate.
+
+### Final screenshots and review
+
+| Surface | Desktop | Mobile |
+|---|---|---|
+| Login | [1440px final](./phase-9/login-1440-final.png) | [375px final](./phase-9/login-375-final.png) |
+| Workspace | [1440px final](./phase-9/workspace-1440-final.png) | [375px final](./phase-9/workspace-375-final.png) |
+
+These are actual production-build captures from the passing suite. Earlier approved
+images are preserved. Comparison confirms only the requested minor opacity/spacing
+changes, with no visible clipping or overlap. Login inputs are empty; workspace
+identity is the real fictional demo account, with no credentials or private records.
+
+Final changes since ea91bde: `Makefile`, `README.md`, `frontend/app/globals.css`,
+`frontend/{package.json,package-lock.json,playwright.config.ts}`,
+`frontend/tests/workspace.spec.ts`, `infra/scripts/{check-ingestion.mjs,check-sessions.mjs}`,
+this report and the four final screenshots. The local account rotation is deliberately
+outside Git. The earlier phase-wide file list remains above.
+
+Ponytail Review: traced server verification, cookie/CSRF flow, session hiding and
+revalidation, native modal focus behavior, credential-safe tests, the disposable
+test guard/cleanup, development override, fonts, navigation/legal links and approved
+CSS changes. Confirmed diagnostic exposure was remediated with invalidation, cleanup
+and a tested safeguard. No material application or security finding remains open.
+**Verdict: Ship after final hosted CI succeeds.** Remaining limitations are declared
+demo scale, draft legal policies, unknown vulnerabilities, scoped secret scanning,
+non-exhaustive manual accessibility coverage and historical timing uncertainty.
+None authorizes production deployment, merging or Phase 10.

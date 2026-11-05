@@ -113,7 +113,10 @@ async function prepareIsolatedStack() {
     "-f", "infra/compose.yaml", "config", "--format", "json"], { cwd: root });
   const config = JSON.parse(stdout);
   config.name = project;
-  delete config.services.frontend;
+  if (process.argv.includes("--sessions")) {
+    config.services.frontend.ports = [{ target: 3000, published: "18009", host_ip: "127.0.0.1", protocol: "tcp" }];
+    config.services.frontend.command = ["sh", "-ec", "npm run build && npm run start -- --hostname 0.0.0.0"];
+  } else delete config.services.frontend;
   delete config.services["backend-checks"];
   for (const [name, volume] of Object.entries(config.volumes)) volume.name = `${project}_${name}`;
   for (const [name, network] of Object.entries(config.networks)) network.name = `${project}_${name}`;
@@ -122,6 +125,11 @@ async function prepareIsolatedStack() {
   }
   config.services.api.ports = [{ target: 8000, published: String(port), host_ip: "127.0.0.1", protocol: "tcp" }];
   config.services.api.environment.AUTH_ALLOWED_ORIGINS = origin;
+  if (process.argv.includes("--sessions")) {
+    config.services.api.environment.AUTH_ALLOWED_ORIGINS += ",http://127.0.0.1:18009";
+    config.services.api.environment.AUTH_IDLE_SECONDS = "60";
+    config.services.api.environment.AUTH_SESSION_SECONDS = "300";
+  }
   const migrationText = await readFile(new URL("../../.local/migration.env", import.meta.url), "utf8");
   const migrationPassword = migrationText.match(/^MIGRATION_DB_PASSWORD=([a-f0-9]{64})$/m)?.[1];
   assert.ok(migrationPassword, "Existing migration identity required");
@@ -155,6 +163,7 @@ async function prepareIsolatedStack() {
   await compose("run", "--rm", "--no-deps", "--build", "--user", `${process.getuid()}:${process.getgid()}`, "-v",
     `${fileURLToPath(credentialPath)}:/run/demo/credentials.json:ro`, "api", "python", "-m", "app.seed");
   await compose("up", "-d", "--build", "--wait", "api", "worker");
+  if (process.argv.includes("--sessions")) await compose("up", "-d", "--build", "--wait", "frontend");
   console.log("Isolated ingestion test stack ready; main services and volumes are untouched.");
 }
 
@@ -162,7 +171,10 @@ try {
   await prepareIsolatedStack();
   await ready();
   await loginAs(email);
-  if (process.argv.includes("--cases")) {
+  if (process.argv.includes("--sessions")) {
+    const { verifySessions } = await import("./check-sessions.mjs");
+    await verifySessions({ credentials, pass });
+  } else if (process.argv.includes("--cases")) {
     const { verifyCases } = await import("./check-cases.mjs");
     await verifyCases({ compose, request, terminal, pass, loginAs, marker, upload });
   } else if (process.argv.includes("--explanations")) {
@@ -270,4 +282,4 @@ try {
   // This fixed project owns only isolated test volumes, never the main development volumes.
   if (ownsStack) await compose("down", "--volumes", "--remove-orphans");
 }
-console.log(`${passed} ${process.argv.includes("--cases") ? "case" : process.argv.includes("--explanations") ? "explanation" : process.argv.includes("--scoring") ? "scoring" : process.argv.includes("--models") ? "model" : "ingestion"} integration checks passed; isolated resources removed.`);
+console.log(`${passed} ${process.argv.includes("--sessions") ? "session" : process.argv.includes("--cases") ? "case" : process.argv.includes("--explanations") ? "explanation" : process.argv.includes("--scoring") ? "scoring" : process.argv.includes("--models") ? "model" : "ingestion"} integration checks passed; isolated resources removed.`);
