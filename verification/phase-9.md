@@ -1,9 +1,9 @@
 # Phase 9: Signal Atlas authentication and shell
 
-Updated 2026-11-05. **Owner visual approval is received. Final polish, credential
-remediation, local production verification and review are complete. Final publication
-and hosted CI are the remaining gate; their exact commit/run are recorded in the
-handoff. No merge, deployment or Phase 10 is authorized.**
+Updated 2026-11-06. **Owner-approved Phase 9 implementation, final polish, credential
+remediation, production verification and Ponytail Review are complete. Implementation
+f6bc5d0 is published and its full hosted workflow passed. This report-only publication
+is verified separately in the final handoff. No merge, deployment or Phase 10 is authorized.**
 
 ## Authorization, resume and preservation
 
@@ -524,3 +524,63 @@ and a tested safeguard. No material application or security finding remains open
 demo scale, draft legal policies, unknown vulnerabilities, scoped secret scanning,
 non-exhaustive manual accessibility coverage and historical timing uncertainty.
 None authorizes production deployment, merging or Phase 10.
+
+## Confirmed final implementation publication (2026-11-06)
+
+The interrupted publication had already succeeded. Local HEAD and
+`origin/feat/phase-09-ui-shell-auth` both pointed to
+[f6bc5d0e526ba27538aa3049f1876e00e58369da](https://github.com/axyz97836/SentinaAI/commit/f6bc5d0e526ba27538aa3049f1876e00e58369da)
+(`fix(ui): finalize Phase 9 security and verification`), and the working tree was clean.
+No implementation commit was duplicated and no completed local suite was rerun.
+Remote main remains `5e695b08e841bd395a27598c9953d87acebba705` (the Phase 8 merge).
+Origin remains exactly `https://github.com/axyz97836/SentinaAI`.
+
+Direct GitHub run/job inspection confirms
+[workflow 42011113293](https://github.com/axyz97836/SentinaAI/actions/runs/42011113293)
+completed **success** on that exact implementation SHA. Its single
+[foundation job](https://github.com/axyz97836/SentinaAI/actions/runs/42011113293/job/127190110412)
+completed every required verification and cleanup step. Only the conditional
+failure-diagnostics step was skipped; no required test was skipped or cancelled.
+Downloaded logs independently confirm:
+
+| Hosted verification | Exact completed result |
+|---|---|
+| Stack/configuration and ARM64 runtime | PASS |
+| Guarded database suite | **354 passed**, one existing warning, **79.00 s** |
+| Backend | Ruff PASS; **80 files** formatted; mypy **52 modules** PASS; **247 passed**, 354 deselected, four existing warnings, **7.79 s** |
+| Frontend | ESLint, strict TypeScript and production build PASS |
+| Infrastructure / controlled outage recovery | **5 / 8 groups passed** |
+| Ingestion / model / scoring / explanation / case integration | **9 / 8 / 9 / 7 / 11 passed** |
+| Browser regression | **23 passed, 0 failed**, **17.3 s** |
+| npm dependency audit | **0 vulnerabilities** |
+| Cleanup / final workflow conclusion | **success** |
+
+Hosted total: **624 distinct application tests = 354 + 247 + 23**, plus **44 separate
+workflow integration checks**. Local production-browser verification independently
+passed the same 23 tests in **10.4 s**. The **five elapsed-session checks** and
+**12 native zoom/reflow checks** are separate local evidence, not falsely counted
+as hosted tests or extra application-test coverage. The unchanged full Python lock
+audit, diagnostic-canary probe, secret assessment and screenshot inspection remain
+applicable and are detailed above.
+
+The redacted rotation record confirms old-password **401**, replacement **200**,
+verification logout **204**, one analyst session revoked, unchanged other account
+hashes/credentials and a **0600** credential file. Cleanup records confirm both
+credential-bearing originals were removed after redacted evidence preservation.
+Final diagnostics contain no current demo-password matches. No credential, recovery
+script, private log, trace or ignored local artifact was staged or published.
+Rotation and cleanup were not repeated merely to resume publication.
+
+The final post-implementation scan checked **202 working files, 333 HEAD-reachable
+historical blobs and runtime logs**, with no findings under its stated known-value
+and common-pattern limits. Full CI logs are retained only in ignored restrictive
+storage at `.local/phase4-ci-42011113293.zip` (legacy downloader filename).
+No Git authentication or synchronization error occurred.
+
+**Ponytail Review: no unresolved material Phase 9 issue; ready for owner PR review
+after successful CI on the report-only handoff commit.** The final response records
+that commit and its hosted result, avoiding self-referential commit hashes in this
+file. All approved visuals and protected documents remain unchanged by this report
+update. Known limitations remain the dated/scoped audit coverage, demo scale, draft
+legal policies, non-exhaustive assistive-technology coverage and unreconstructable
+historical timing details. No current failing check is waived.
