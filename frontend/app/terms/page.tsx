@@ -1,0 +1,7 @@
+import type { Metadata } from "next";
+import { LegalPage } from "../_components/legal-page";
+export const metadata: Metadata = { title: "Terms draft", description: "Owner-review terms draft for the SentinelAI synthetic-data demonstration." };
+
+export default function Terms() {
+  return <LegalPage title="A demonstration. With limits."><h2>Purpose</h2><p>SentinelAI is an educational demonstration of transaction-risk scoring and investigation workflows. It is not a live bank integration, a production fraud-prevention service or financial advice.</p><h2>Permitted data and access</h2><p>Use only authorized demonstration accounts and fictional transaction data. Do not upload actual personal or financial records, share credentials, bypass organization boundaries or interfere with the service.</p><h2>Interpreting results</h2><p>Scores are screening signals, not proof of fraud or calibrated fraud probabilities. Metrics measured on synthetic data do not establish real-world accuracy. Investigator outcomes do not automatically become model-training labels.</p><h2>Availability and changes</h2><p>This demonstration may be incomplete or unavailable. There is no production availability guarantee. Features are introduced through reviewed development phases.</p><h2>Owner review required</h2><p>These terms are a draft, not a finalized agreement. Legal details, hosting arrangements and a legitimate contact channel must be reviewed before public deployment.</p></LegalPage>;
+}

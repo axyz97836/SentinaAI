@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// Playwright's AI error-context DOM snapshot can include password input values.
+process.env.PLAYWRIGHT_NO_COPY_PROMPT = "1";
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
