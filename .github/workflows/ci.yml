@@ -35,6 +35,7 @@ jobs:
         working-directory: frontend
       - run: npm test
         working-directory: frontend
+      - run: make transactions-ui-check
       - run: npm audit --audit-level=high
         working-directory: frontend
       - name: Capture redacted diagnostics before cleanup
