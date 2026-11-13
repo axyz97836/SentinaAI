@@ -1,10 +1,11 @@
 # Phase 10 — Transactions and explanation interface
 
-Status: **all mandatory local gates passed; owner-accepted residual availability
-risk retained; verified feature-branch publication and hosted CI pending**. The original database lock timeout was not
-reproduced and its cause is not proven (2026-11-12). Earlier results below are retained
-as historical checkpoints. See the final polish section for current results.
-This is not a Phase 10 completion claim.
+Status: **Phase 10 implementation verified and published; all mandatory local and
+hosted gates passed; owner-accepted residual availability risk retained**. The
+original database lock timeout was not reproduced and its cause is not proven.
+Earlier results below are historical checkpoints; the final verification and
+publication sections contain the current evidence. Owner PR review is the next
+boundary, with no merge, deployment or Phase 11 authorization.
 
 ## Authority and starting point
 
@@ -914,6 +915,79 @@ No merge, deployment or Phase 11 work is authorized or performed.
 
 ### Publication record
 
-Local release gates and review are complete. Final staged-file/secret review,
-feature-branch push, remote SHA confirmation and hosted Actions outcome will be
-recorded after actual execution. No hosted result is inferred from local passes.
+Implementation commit:
+[`357d00ee8908fa183fd5bc89d6637796a94ffc6a`](https://github.com/axyz97836/SentinaAI/commit/357d00ee8908fa183fd5bc89d6637796a94ffc6a),
+`feat(ui): finalize verified Phase 10 transactions workflow`.
+It was pushed using the explicit refspec
+`HEAD:refs/heads/feat/phase-10-transactions-ui`. `git ls-remote` confirmed that exact
+SHA on the [remote feature branch](https://github.com/axyz97836/SentinaAI/tree/feat/phase-10-transactions-ui).
+Remote main remained `af6cea67c87513f481dbdc0e4f54d707e2f6de93`; nothing was merged.
+
+The staged review covered **37 files, 1,866 added text lines and 16 removed text
+lines**, including the full historical verification report and 16 screenshots.
+No credentials, private logs, diagnostic helpers, temporary orchestration files,
+protected documents, backend files or dependencies were committed. The completed
+implementation was preserved as one verified unit, without reconstructing its
+interrupted development history. Staged whitespace checks passed. Post-commit
+secret scanning covered **231 working files and 371 historical blobs**, plus
+API/worker logs, with **zero findings** under the previously stated scope. A
+separate non-disclosing scan of all **7 recovered runner/test logs** also found
+zero known-current-secret/common-token-pattern matches.
+
+### Hosted verification of the implementation commit
+
+[GitHub Actions run 43377273343](https://github.com/axyz97836/SentinaAI/actions/runs/43377273343)
+completed with **success** for exactly
+`357d00ee8908fa183fd5bc89d6637796a94ffc6a`. The required `foundation` job passed;
+all **24 executed steps succeeded**. Only the conditional failure-diagnostics
+step was skipped because the run succeeded; no test gate was skipped or retried.
+The run's SHA, job and step results were verified through the GitHub API. Actual
+completed logs were read using existing credential-manager authentication; the
+archive stays private and ignored. GitHub CLI was unavailable, so the GitHub API
+was used. No authentication or synchronization error occurred.
+
+| Hosted gate | Actual result |
+|---|---|
+| Database | **354 passed**, 1 existing warning, **75.42 s** |
+| Backend | **247 passed**, 354 deselected, 4 existing warnings, **7.62 s**; Ruff, format and mypy passed |
+| Frontend | Lint, strict TypeScript and production build passed |
+| Browser | **23 passed**, **15.9 s** |
+| Ingestion / model / scoring / explanation / case | **9 / 8 / 9 / 7 / 11 integration checks passed** |
+| Transaction UI | **21 integration groups passed**, including **10 axe scans with zero violations** and **24 responsive checks** |
+| Infrastructure / outage recovery | **5 groups / 8 assertions passed** |
+| Runtime, migrations and seed | Authoritative API/worker runtime, database migration and synthetic seed passed |
+| npm audit | **0 vulnerabilities** |
+| Cleanup | Successful; isolated integration resources removed |
+
+Totals are **624 database/backend/browser tests and 65 integration groups**,
+with infrastructure/outage assertions listed separately. Accessibility/layout
+checks are within the UI groups, not additional independent integration groups.
+Repeated local and hosted runs are not added together as unique tests. No hosted
+lock-timeout recurrence or failed assertion was observed. The earlier timeout is
+still recorded and accepted as residual availability risk, not proven remediation.
+
+### Final handoff correction and preservation
+
+The owner requested verification of this completed run and the exact remote HEAD.
+The published report still incorrectly said publication/CI were pending, so this
+essential **report-only correction** records their observed results. No application
+or test suite was restarted locally. Its containing commit will receive the same
+unmodified hosted workflow; the exact final commit SHA, remote HEAD and successful
+run URL must be independently verified and supplied in the final owner handoff.
+This avoids claiming a report commit's own future CI outcome inside that commit.
+
+At correction review, the working tree was clean before editing this report.
+All **11 protected-document hashes** matched again; the **164-file preservation
+manifest**, **16 screenshots**, **43 running-frontend file comparisons** and demo
+credential comparison passed. Backend, dependencies, numerical/model fixtures
+and Signal Atlas design-system diffs against the Phase 9 base remained empty.
+Read-only main model inspection returned **0 model versions / 0 active models**;
+no main model was trained, activated, replaced or deleted. All training/tamper
+verification used disposable test stacks and their private artifacts.
+
+Final Ponytail verdict remains **Ship for owner PR review**, contingent on verifying
+the report-only commit's hosted success in the final handoff. The previously
+accepted intermittent availability risk, unknown root cause/recurrence rate,
+synthetic-only data policy, Chromium-focused automation, untested production load,
+assistive-technology/penetration-test limits and future provider/legal gates remain.
+No deployment, merge, force-push, security-control change or Phase 11 work occurred.
