@@ -34,8 +34,9 @@ for (const [account, role] of [["analyst", "Fraud analyst"], ["risk-manager", "R
     expect(await page.evaluate(() => document.cookie.includes("sentinel_session"))).toBe(false);
     expect(await page.evaluate(() => localStorage.length + sessionStorage.length)).toBe(0);
     const nav = page.getByRole("navigation", { name: "Workspace", exact: true }).filter({ visible: true });
-    await expect(nav.getByRole("link")).toHaveCount(1);
+    await expect(nav.getByRole("link")).toHaveCount(2);
     await expect(nav.getByRole("link", { name: "Overview" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Transactions", exact: true })).toHaveAttribute("href", "/transactions");
     expect((await page.request.get("/api/v1/auth/me")).status()).toBe(200);
     if (account === "analyst") {
       await page.evaluate(() => document.fonts.ready);

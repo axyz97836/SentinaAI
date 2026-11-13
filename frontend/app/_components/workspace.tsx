@@ -8,15 +8,15 @@ import { Contours, Icon } from "./atlas-graphics";
 import { Button, Footer, Status } from "./ui";
 import { useHydrated } from "../_lib/use-hydrated";
 
-function Navigation({ identity }: { identity: Identity }) {
+function Navigation({ identity, activeSection }: { identity: Identity; activeSection: "overview" | "transactions" }) {
   return <><p className="eyebrow rail-label">Workspace</p>
-    <nav aria-label="Workspace"><a className="nav-item" href="/dashboard" aria-current="page"><Icon name="home" /> Overview</a></nav>
+    <nav aria-label="Workspace"><a className="nav-item" href="/dashboard" aria-current={activeSection === "overview" ? "page" : undefined}><Icon name="home" /> Overview</a><a className="nav-item" href="/transactions" aria-current={activeSection === "transactions" ? "page" : undefined}>Transactions</a></nav>
     <div className="rail-context"><p className="eyebrow">Current access</p><div className="rail-identity"><Icon name="person" /><div><strong>{identity.user.display_name}</strong><p className="muted">{roleLabels[identity.role]}</p></div></div><div className="rail-organization"><strong>{identity.organization.name}</strong><p className="muted">Organization</p></div></div>
     <p className="rail-purpose">A dedicated space for transaction signals, evidence and clear reasoning. Only available pages appear here.</p>
   </>;
 }
 
-export function Workspace({ identity, children }: { identity: Identity; children: ReactNode }) {
+export function Workspace({ identity, children, activeSection = "overview" }: { identity: Identity; children: ReactNode; activeSection?: "overview" | "transactions" }) {
   const hydrated = useHydrated();
   const dialog = useRef<HTMLDialogElement>(null);
   const menu = useRef<HTMLButtonElement>(null);
@@ -90,7 +90,7 @@ export function Workspace({ identity, children }: { identity: Identity; children
     <header className="workspace-header"><Brand /><div className="header-session"><span className="eyebrow header-note">Signal Atlas / Demo workspace</span><a href="#account-heading" className="header-account"><Icon name="person" /><span><strong>{identity.user.display_name}</strong><span>{roleLabels[identity.role]}</span></span></a></div>
       <button ref={menu} disabled={!hydrated} className="button secondary mobile-toggle" aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="mobile-navigation" onClick={() => { dialog.current?.showModal(); setMenuOpen(true); }}><Icon name="menu" /></button>
     </header>
-    <aside className="sidebar"><Navigation identity={identity} /><div className="rail-footnote"><Contours /><p>Keep the evidence<br />in view.</p></div></aside>
+    <aside className="sidebar"><Navigation identity={identity} activeSection={activeSection} /><div className="rail-footnote"><Contours /><p>Keep the evidence<br />in view.</p></div></aside>
     <dialog id="mobile-navigation" ref={dialog} className="mobile-drawer" aria-labelledby="navigation-title" onClose={() => { setMenuOpen(false); menu.current?.focus(); }} onKeyDown={event => {
       if (event.key !== "Tab") return;
       const controls = event.currentTarget.querySelectorAll<HTMLElement>("a[href], button:not(:disabled)");
@@ -99,7 +99,7 @@ export function Workspace({ identity, children }: { identity: Identity; children
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
     }}>
       <div className="drawer-heading"><h2 id="navigation-title">Navigation</h2><Button className="secondary" onClick={() => dialog.current?.close()}>Close</Button></div>
-      <Navigation identity={identity} />
+      <Navigation identity={identity} activeSection={activeSection} />
       <nav className="drawer-legal" aria-label="Navigation legal links"><a href="/privacy">Privacy draft</a><a href="/terms">Terms draft</a></nav>
     </dialog>
     <div className="workspace-body"><div className="account-bar"><span>{identity.organization.name}</span><span className="account-role">{roleLabels[identity.role]}</span></div>

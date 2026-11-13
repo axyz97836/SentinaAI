@@ -63,6 +63,10 @@ case-check:
 session-check:
 	node infra/scripts/check-ingestion.mjs --sessions
 
+.PHONY: transactions-ui-check
+transactions-ui-check:
+	node infra/scripts/check-ingestion.mjs --transactions-ui
+
 frontend-check:
 	$(COMPOSE) build frontend
 	$(COMPOSE) run --rm --no-deps frontend npm run check
@@ -82,4 +86,4 @@ seed: migrate
 database-check:
 	node infra/scripts/check-database.mjs
 
-check: model-runtime-check backend-check frontend-check database-check infra-check outage-check ingestion-check model-check scoring-check explanation-check case-check browser-check
+check: model-runtime-check backend-check frontend-check database-check infra-check outage-check ingestion-check model-check scoring-check explanation-check case-check browser-check transactions-ui-check

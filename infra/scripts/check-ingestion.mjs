@@ -22,7 +22,8 @@ let csrf;
 let passed = 0;
 let ownsStack = false;
 const started = new Date().toISOString();
-const marker = ["--models", "--scoring", "--explanations", "--cases"].some(arg => process.argv.includes(arg)) ? "fictional-c-" : "phase4-e2e-fictional-marker";
+const transactionUI = process.argv.includes("--transactions-ui");
+const marker = ["--models", "--scoring", "--explanations", "--cases", "--transactions-ui"].some(arg => process.argv.includes(arg)) ? "fictional-c-" : "phase4-e2e-fictional-marker";
 const header = "external_id,customer_ref,occurred_at,amount,currency,merchant_category,country_code,channel";
 const row = `${marker},fictional-customer,2026-10-20T10:00:00Z,12.34,INR,grocery,IN,WEB`;
 const csv = `${header}\n${row}\n`;
@@ -113,8 +114,8 @@ async function prepareIsolatedStack() {
     "-f", "infra/compose.yaml", "config", "--format", "json"], { cwd: root });
   const config = JSON.parse(stdout);
   config.name = project;
-  if (process.argv.includes("--sessions")) {
-    config.services.frontend.ports = [{ target: 3000, published: "18009", host_ip: "127.0.0.1", protocol: "tcp" }];
+  if (process.argv.includes("--sessions") || transactionUI) {
+    config.services.frontend.ports = [{ target: 3000, published: transactionUI ? "18010" : "18009", host_ip: "127.0.0.1", protocol: "tcp" }];
     config.services.frontend.command = ["sh", "-ec", "npm run build && npm run start -- --hostname 0.0.0.0"];
   } else delete config.services.frontend;
   delete config.services["backend-checks"];
@@ -125,6 +126,7 @@ async function prepareIsolatedStack() {
   }
   config.services.api.ports = [{ target: 8000, published: String(port), host_ip: "127.0.0.1", protocol: "tcp" }];
   config.services.api.environment.AUTH_ALLOWED_ORIGINS = origin;
+  if (transactionUI) config.services.api.environment.AUTH_ALLOWED_ORIGINS += ",http://127.0.0.1:18010";
   if (process.argv.includes("--sessions")) {
     config.services.api.environment.AUTH_ALLOWED_ORIGINS += ",http://127.0.0.1:18009";
     config.services.api.environment.AUTH_IDLE_SECONDS = "60";
@@ -163,7 +165,7 @@ async function prepareIsolatedStack() {
   await compose("run", "--rm", "--no-deps", "--build", "--user", `${process.getuid()}:${process.getgid()}`, "-v",
     `${fileURLToPath(credentialPath)}:/run/demo/credentials.json:ro`, "api", "python", "-m", "app.seed");
   await compose("up", "-d", "--build", "--wait", "api", "worker");
-  if (process.argv.includes("--sessions")) await compose("up", "-d", "--build", "--wait", "frontend");
+  if (process.argv.includes("--sessions") || transactionUI) await compose("up", "-d", "--build", "--wait", "frontend");
   console.log("Isolated ingestion test stack ready; main services and volumes are untouched.");
 }
 
@@ -171,7 +173,10 @@ try {
   await prepareIsolatedStack();
   await ready();
   await loginAs(email);
-  if (process.argv.includes("--sessions")) {
+  if (transactionUI) {
+    const { verifyTransactionsUI } = await import("./check-transactions-ui.mjs");
+    await verifyTransactionsUI({ compose, request, terminal, pass, loginAs, marker, upload, credentials });
+  } else if (process.argv.includes("--sessions")) {
     const { verifySessions } = await import("./check-sessions.mjs");
     await verifySessions({ credentials, pass });
   } else if (process.argv.includes("--cases")) {
@@ -282,4 +287,4 @@ try {
   // This fixed project owns only isolated test volumes, never the main development volumes.
   if (ownsStack) await compose("down", "--volumes", "--remove-orphans");
 }
-console.log(`${passed} ${process.argv.includes("--sessions") ? "session" : process.argv.includes("--cases") ? "case" : process.argv.includes("--explanations") ? "explanation" : process.argv.includes("--scoring") ? "scoring" : process.argv.includes("--models") ? "model" : "ingestion"} integration checks passed; isolated resources removed.`);
+console.log(`${passed} ${transactionUI ? "transaction UI" : process.argv.includes("--sessions") ? "session" : process.argv.includes("--cases") ? "case" : process.argv.includes("--explanations") ? "explanation" : process.argv.includes("--scoring") ? "scoring" : process.argv.includes("--models") ? "model" : "ingestion"} integration checks passed; isolated resources removed.`);

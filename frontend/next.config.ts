@@ -7,7 +7,7 @@ const config: NextConfig = {
   allowedDevOrigins: ["127.0.0.1"],
   async rewrites() {
     const api = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:8000";
-    return ["health/live", "health/ready", "auth/csrf", "auth/login", "auth/me", "auth/logout"].map((path) => ({
+    return ["health/live", "health/ready", "auth/csrf", "auth/login", "auth/me", "auth/logout", "transactions", "transactions/:id", "transactions/:id/explanation", "ingestions", "jobs/:id"].map((path) => ({
       source: `/api/v1/${path}`,
       destination: `${api}/api/v1/${path}`,
     }));
